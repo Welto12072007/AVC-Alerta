@@ -1,17 +1,53 @@
 import { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import { Link } from 'expo-router';
 import { Heart, Activity, ArrowRight, ArrowLeft, Calendar, Thermometer, ChartBar as BarChart3 } from 'lucide-react-native';
+
+interface Reading {
+  id: number;
+  date: Date;
+  notes?: string;
+}
+
+interface BPReading extends Reading {
+  systolic: number;
+  diastolic: number;
+}
+
+interface HeartRateReading extends Reading {
+  value: number;
+}
+
+interface WeightReading extends Reading {
+  value: number;
+}
+
+interface NewReading {
+  systolic: string;
+  diastolic: string;
+  heartRate: string;
+  weight: string;
+  notes: string;
+}
+
+interface Readings {
+  bp: BPReading[];
+  heartRate: HeartRateReading[];
+  weight: WeightReading[];
+}
+
+type TabType = 'bp' | 'heartRate' | 'weight';
 
 export default function MonitoringScreen() {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedTab, setSelectedTab] = useState('bp'); // bp = blood pressure
-  const [readings, setReadings] = useState({
+  const [selectedTab, setSelectedTab] = useState<TabType>('bp');
+  const [readings, setReadings] = useState<Readings>({
     bp: [],
     heartRate: [],
     weight: [],
   });
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newReading, setNewReading] = useState({
+  const [newReading, setNewReading] = useState<NewReading>({
     systolic: '',
     diastolic: '',
     heartRate: '',
@@ -22,7 +58,7 @@ export default function MonitoringScreen() {
   // Simulated data
   useEffect(() => {
     // In a real app, would load from storage
-    const mockData = {
+    const mockData: Readings = {
       bp: [
         { id: 1, date: new Date(2023, 5, 1, 8, 30), systolic: 135, diastolic: 85, notes: 'Após medicação' },
         { id: 2, date: new Date(2023, 5, 1, 20, 15), systolic: 140, diastolic: 88, notes: 'Antes de dormir' },
@@ -51,7 +87,7 @@ export default function MonitoringScreen() {
       }
       
       const newId = readings.bp.length > 0 ? Math.max(...readings.bp.map(r => r.id)) + 1 : 1;
-      const newBpReading = {
+      const newBpReading: BPReading = {
         id: newId,
         date: now,
         systolic: parseInt(newReading.systolic),
@@ -70,7 +106,7 @@ export default function MonitoringScreen() {
       }
       
       const newId = readings.heartRate.length > 0 ? Math.max(...readings.heartRate.map(r => r.id)) + 1 : 1;
-      const newHrReading = {
+      const newHrReading: HeartRateReading = {
         id: newId,
         date: now,
         value: parseInt(newReading.heartRate),
@@ -88,7 +124,7 @@ export default function MonitoringScreen() {
       }
       
       const newId = readings.weight.length > 0 ? Math.max(...readings.weight.map(r => r.id)) + 1 : 1;
-      const newWeightReading = {
+      const newWeightReading: WeightReading = {
         id: newId,
         date: now,
         value: parseFloat(newReading.weight),
@@ -112,7 +148,7 @@ export default function MonitoringScreen() {
     setShowAddForm(false);
   };
 
-  const formatDate = (date) => {
+  const formatDate = (date: Date): string => {
     return date.toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
@@ -120,14 +156,14 @@ export default function MonitoringScreen() {
     });
   };
 
-  const formatTime = (date) => {
+  const formatTime = (date: Date): string => {
     return date.toLocaleTimeString('pt-BR', {
       hour: '2-digit',
       minute: '2-digit',
     });
   };
 
-  const getBpStatus = (systolic, diastolic) => {
+  const getBpStatus = (systolic: number, diastolic: number): { label: string; color: string } => {
     if (systolic < 120 && diastolic < 80) {
       return { label: 'Normal', color: '#10B981' };
     } else if ((systolic >= 120 && systolic <= 129) && diastolic < 80) {
@@ -142,7 +178,7 @@ export default function MonitoringScreen() {
     return { label: 'Indefinido', color: '#64748B' };
   };
 
-  const getHeartRateStatus = (hr) => {
+  const getHeartRateStatus = (hr: number): { label: string; color: string } => {
     if (hr < 60) {
       return { label: 'Bradicardia', color: '#F97316' };
     } else if (hr >= 60 && hr <= 100) {
@@ -154,7 +190,7 @@ export default function MonitoringScreen() {
 
   const renderReadingsList = () => {
     if (selectedTab === 'bp') {
-      const sortedReadings = [...readings.bp].sort((a, b) => b.date - a.date);
+      const sortedReadings = [...readings.bp].sort((a, b) => b.date.getTime() - a.date.getTime());
       
       return (
         <>
@@ -204,7 +240,7 @@ export default function MonitoringScreen() {
         </>
       );
     } else if (selectedTab === 'heartRate') {
-      const sortedReadings = [...readings.heartRate].sort((a, b) => b.date - a.date);
+      const sortedReadings = [...readings.heartRate].sort((a, b) => b.date.getTime() - a.date.getTime());
       
       return (
         <>
@@ -248,7 +284,7 @@ export default function MonitoringScreen() {
         </>
       );
     } else if (selectedTab === 'weight') {
-      const sortedReadings = [...readings.weight].sort((a, b) => b.date - a.date);
+      const sortedReadings = [...readings.weight].sort((a, b) => b.date.getTime() - a.date.getTime());
       
       return (
         <>
