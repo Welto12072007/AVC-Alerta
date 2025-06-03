@@ -39,7 +39,7 @@ interface Readings {
 type TabType = 'bp' | 'heartRate' | 'weight';
 
 export default function MonitoringScreen() {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [selectedTab, setSelectedTab] = useState<TabType>('bp');
   const [readings, setReadings] = useState<Readings>({
     bp: [],
@@ -90,8 +90,8 @@ export default function MonitoringScreen() {
       const newBpReading: BPReading = {
         id: newId,
         date: now,
-        systolic: parseInt(newReading.systolic),
-        diastolic: parseInt(newReading.diastolic),
+        systolic: parseInt(newReading.systolic, 10),
+        diastolic: parseInt(newReading.diastolic, 10),
         notes: newReading.notes,
       };
       
@@ -109,7 +109,7 @@ export default function MonitoringScreen() {
       const newHrReading: HeartRateReading = {
         id: newId,
         date: now,
-        value: parseInt(newReading.heartRate),
+        value: parseInt(newReading.heartRate, 10),
         notes: newReading.notes,
       };
       
@@ -864,7 +864,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  infoCard: {
+  in
+foCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     margin: 16,
