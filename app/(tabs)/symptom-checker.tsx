@@ -96,7 +96,7 @@ export default function SymptomCheckerScreen() {
             onPress={() => {
               setResults({ ...results, face: false });
               setCurrentStep(2);
-            }}
+            }} 
           >
             <Text style={styles.optionButtonText}>Sorriso Normal</Text>
           </TouchableOpacity>

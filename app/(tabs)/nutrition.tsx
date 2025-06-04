@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image, TextInput} from 'react-native';
 import { Search, Filter, X } from 'lucide-react-native';
 
 export default function NutritionScreen() {
@@ -14,7 +14,18 @@ export default function NutritionScreen() {
     { id: 'moderately', label: 'Moderação' },
   ];
 
-  const foods = [
+  type Food = {
+    id: number;
+    name: string;
+    category: 'recommended' | 'avoid' | 'moderately';
+    image: string;
+    description: string;
+    benefits?: string[];
+    reasons?: string[];
+    recommendations?: string[];
+  };
+
+  const foods: Food[] = [
     {
       id: 1,
       name: 'Peixes Ricos em Ômega-3',
@@ -160,7 +171,7 @@ export default function NutritionScreen() {
       (searchQuery === '' || food.name.toLowerCase().includes(searchQuery.toLowerCase()))
     );
 
-  const renderFoodCard = (food) => {
+  const renderFoodCard = (food: Food) => {
     const categoryColor = food.category === 'recommended' 
       ? '#10B981' 
       : food.category === 'avoid' 
@@ -190,7 +201,7 @@ export default function NutritionScreen() {
           {food.benefits && (
             <View style={styles.listContainer}>
               <Text style={styles.listTitle}>Benefícios:</Text>
-              {food.benefits.map((benefit, index) => (
+              {food.benefits.map((benefit: string, index: number) => (
                 <View key={index} style={styles.listItem}>
                   <View style={[styles.listDot, { backgroundColor: '#10B981' }]} />
                   <Text style={styles.listText}>{benefit}</Text>
@@ -202,7 +213,7 @@ export default function NutritionScreen() {
           {food.reasons && (
             <View style={styles.listContainer}>
               <Text style={styles.listTitle}>Por que evitar:</Text>
-              {food.reasons.map((reason, index) => (
+              {food.reasons.map((reason: String, index: number) => (
                 <View key={index} style={styles.listItem}>
                   <View style={[styles.listDot, { backgroundColor: '#EF4444' }]} />
                   <Text style={styles.listText}>{reason}</Text>
@@ -214,7 +225,7 @@ export default function NutritionScreen() {
           {food.recommendations && (
             <View style={styles.listContainer}>
               <Text style={styles.listTitle}>Recomendações:</Text>
-              {food.recommendations.map((recommendation, index) => (
+              {food.recommendations.map((recommendation: String, index: number) => (
                 <View key={index} style={styles.listItem}>
                   <View style={[styles.listDot, { backgroundColor: '#F97316' }]} />
                   <Text style={styles.listText}>{recommendation}</Text>
