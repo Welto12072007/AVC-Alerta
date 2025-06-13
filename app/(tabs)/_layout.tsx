@@ -67,6 +67,16 @@ export default function TabLayout() {
           tabBarActiveTintColor: '#EF4444',
         }}
       />
+      <Tabs.Screen
+        name="monitoring"
+        options={{
+          title: 'Monitoramento',
+          tabBarIcon: ({color, size}) => <Utensils size={size} color={color}/>,
+          headerTitle: 'Monitoramento',
+          tabBarActiveTintColor: '#EF4444',
+        }}
+      />
+    
     </Tabs>
   );
 }
