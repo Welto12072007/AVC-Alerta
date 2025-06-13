@@ -12,7 +12,7 @@ export default function InformationScreen() {
     prevention: false,
   });
 
-  const toggleSection = (section) => {
+  const toggleSection = (section: keyof typeof expandedSections) => {
     setExpandedSections({
       ...expandedSections,
       [section]: !expandedSections[section],
@@ -315,7 +315,7 @@ export default function InformationScreen() {
                 <View style={styles.timelineContent}>
                   <Text style={styles.timelineTitle}>Fase Aguda</Text>
                   <Text style={styles.timelineText}>
-                    - AVC Isquêmico: trombolíticos, anticoagulantes ou trombectomia mecânica
+                    - AVC Isquêmico: trombolíticos, anticoagulantes ou trombectomia mecânica{'\n'}
                     - AVC Hemorrágico: controle da pressão arterial, reversão de anticoagulantes,
                     possível intervenção cirúrgica
                   </Text>
@@ -510,7 +510,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 16,
-    borderBottomWidth: expandedSections => expandedSections ? 1 : 0,
+    borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
   },
   sectionTitle: {
