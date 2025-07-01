@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Heart, Chrome as Home, Info, Utensils, PhoneCall } from 'lucide-react-native';
+import { Heart, Chrome as Home, Info, Utensils, PhoneCall, BarChart3} from 'lucide-react-native';
 
 export default function TabLayout() {
   return (
@@ -71,7 +71,7 @@ export default function TabLayout() {
         name="monitoring"
         options={{
           title: 'Monitoramento',
-          tabBarIcon: ({color, size}) => <Utensils size={size} color={color}/>,
+          tabBarIcon: ({color, size}) => <BarChart3 size={size} color={color}/>,
           headerTitle: 'Monitoramento',
           tabBarActiveTintColor: '#EF4444',
         }}

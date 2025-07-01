@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, TextInput } from 'react-native';
-import { Link } from 'expo-router';
+import { Link } from 'expo-router'; 
 import { Heart, Activity, ArrowRight, ArrowLeft, Calendar, Thermometer, ChartBar as BarChart3 } from 'lucide-react-native';
 
 interface Reading {

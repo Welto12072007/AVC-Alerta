@@ -2,17 +2,34 @@ import { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, TextInput } from 'react-native';
 import { Phone, Plus, CreditCard as Edit2, Trash2, CircleAlert as AlertCircle } from 'lucide-react-native';
 
+type ContactType = 'personal' | 'medical' | 'emergency';
+
+type Contact = {
+  id: number;
+  name: string;
+  number: string;
+  relation?: string;
+  type: ContactType;
+  fixed?: boolean;
+};
+
 export default function EmergencyScreen() {
-  const [contacts, setContacts] = useState([
+  const [contacts, setContacts] = useState<Contact[]>([
     { id: 1, name: 'SAMU', number: '192', type: 'emergency', fixed: true },
     { id: 2, name: 'Bombeiros', number: '193', type: 'emergency', fixed: true },
     { id: 3, name: 'Polícia', number: '190', type: 'emergency', fixed: true },
   ]);
   
-  const [personalContacts, setPersonalContacts] = useState([]);
+  const [personalContacts, setPersonalContacts] = useState<Contact[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [editingContact, setEditingContact] = useState(null);
-  const [newContact, setNewContact] = useState({ name: '', number: '', relation: '', type: 'personal' });
+  const [editingContact, setEditingContact] = useState<Contact | null>(null);
+  const [newContact, setNewContact] = useState<Contact>({
+     id: 0,
+     name: '',
+     number: '',
+     relation: '',
+     type: 'personal' 
+  });
   
   const handleAddContact = () => {
     if (newContact.name.trim() === '' || newContact.number.trim() === '') {
@@ -33,13 +50,14 @@ export default function EmergencyScreen() {
       setPersonalContacts([...personalContacts, { ...newContact, id: newId }]);
     }
     
-    setNewContact({ name: '', number: '', relation: '', type: 'personal' });
+    setNewContact({id: 0, name: '', number: '', relation: '', type: 'personal' });
     setShowAddForm(false);
   };
   
-  const handleEditContact = (contact) => {
+  const handleEditContact = (contact: Contact) => {
     setEditingContact(contact);
     setNewContact({
+      id: contact.id,
       name: contact.name,
       number: contact.number,
       relation: contact.relation || '',
@@ -48,11 +66,11 @@ export default function EmergencyScreen() {
     setShowAddForm(true);
   };
   
-  const handleDeleteContact = (id) => {
+  const handleDeleteContact = (id: number) => {
     setPersonalContacts(personalContacts.filter(contact => contact.id !== id));
   };
   
-  const handleCallEmergency = (number) => {
+  const handleCallEmergency = (number: string) => {
     // In a real app, this would use Linking.openURL(`tel:${number}`);
     alert(`Simulando chamada para ${number}`);
   };
@@ -60,12 +78,12 @@ export default function EmergencyScreen() {
   const handleCancel = () => {
     setShowAddForm(false);
     setEditingContact(null);
-    setNewContact({ name: '', number: '', relation: '', type: 'personal' });
+    setNewContact({id: 0, name: '', number: '', relation: '', type: 'personal' });
   };
   
   useEffect(() => {
     // In a real app, this would load contacts from local storage
-    const loadedContacts = [
+    const loadedContacts: Contact[] = [
       { id: 4, name: 'Dr. Silva', number: '(11) 98765-4321', relation: 'Neurologista', type: 'medical' },
     ];
     setPersonalContacts(loadedContacts);
@@ -104,7 +122,7 @@ export default function EmergencyScreen() {
         <TouchableOpacity 
           style={styles.addButton}
           onPress={() => {
-            setNewContact({ name: '', number: '', relation: '', type: 'medical' });
+            setNewContact({id: 0, name: '', number: '', relation: '', type: 'medical' });
             setShowAddForm(true);
             setEditingContact(null);
           }}
@@ -159,7 +177,7 @@ export default function EmergencyScreen() {
         <TouchableOpacity 
           style={styles.addButton}
           onPress={() => {
-            setNewContact({ name: '', number: '', relation: '', type: 'personal' });
+            setNewContact({id:0 , name: '', number: '', relation: '', type: 'personal' });
             setShowAddForm(true);
             setEditingContact(null);
           }}
