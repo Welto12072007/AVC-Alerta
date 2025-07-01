@@ -1,0 +1,39 @@
+{
+  "name": "avc-alerta-backend",
+  "version": "1.0.0",
+  "description": "Backend API para o aplicativo AVC Alerta",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "migrate": "knex migrate:latest --knexfile src/config/database.js",
+    "migrate:rollback": "knex migrate:rollback --knexfile src/config/database.js",
+    "seed": "knex seed:run --knexfile src/config/database.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "dotenv": "^16.3.1",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "knex": "^3.0.1",
+    "sqlite3": "^5.1.6",
+    "express-rate-limit": "^7.1.5",
+    "express-validator": "^7.0.1",
+    "morgan": "^1.10.0",
+    "compression": "^1.7.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "keywords": [
+    "avc",
+    "saude",
+    "api",
+    "nodejs",
+    "express"
+  ],
+  "author": "AVC Alerta Team",
+  "license": "MIT"
+}
