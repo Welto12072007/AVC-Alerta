@@ -1,175 +1,167 @@
-import express, { Response, NextFunction } from 'express';
-import { body, validationResult } from 'express-validator';
-import { authenticateToken, AuthenticatedRequest } from '../middleware/auth';
+import { Router, Request, Response } from 'express';
+import { body } from 'express-validator';
 import { supabase } from '../config/supabase';
+import { authMiddleware } from '../middleware/auth';
 
-const router = express.Router();
+const router = Router();
 
-// Obter contatos de emergência do usuário
-router.get('/contacts', authenticateToken, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+// Get emergency call history
+router.get('/calls', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const userId = req.user!.id;
+    const userId = (req as any).userId;
+    const { limit = 50, offset = 0 } = req.query;
 
-    const { data: contacts, error } = await supabase
-      .from('emergency_contacts')
+    const { data, error } = await supabase
+      .from('emergency_calls')
       .select('*')
       .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .order('called_at', { ascending: false })
+      .range(Number(offset), Number(offset) + Number(limit) - 1);
 
     if (error) {
-      throw error;
+      return res.status(400).json({ error: 'Erro ao buscar histórico de chamadas' });
     }
 
-    res.json({
-      contacts: contacts || [],
-      total: contacts?.length || 0,
-    });
-  } catch (error) {
-    next(error);
+    res.json({ data });
+  } catch (error: any) {
+    console.error('Erro ao buscar chamadas:', error);
+    res.status(500).json({ error: 'Erro ao buscar histórico de chamadas' });
   }
 });
 
-// Adicionar contato de emergência
-router.post('/contacts', [
-  authenticateToken,
-  body('name').notEmpty().withMessage('Nome é obrigatório'),
-  body('phone').notEmpty().withMessage('Telefone é obrigatório'),
-  body('type').isIn(['personal', 'medical', 'emergency']).withMessage('Tipo inválido'),
-], async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        error: 'Dados inválidos',
-        details: errors.array(),
+// Register emergency call
+router.post('/call',
+  authMiddleware,
+  [
+    body('location_latitude').optional().isFloat(),
+    body('location_longitude').optional().isFloat(),
+    body('location_address').optional().isString(),
+    body('symptom_check_id').optional().isUUID(),
+    body('notes').optional().isString(),
+  ],
+  async (req: Request, res: Response) => {
+    try {
+      const userId = (req as any).userId;
+      const callData = {
+        user_id: userId,
+        location_latitude: req.body.location_latitude,
+        location_longitude: req.body.location_longitude,
+        location_address: req.body.location_address,
+        symptom_check_id: req.body.symptom_check_id,
+        notes: req.body.notes,
+        call_status: 'registered',
+      };
+
+      const { data, error } = await supabase
+        .from('emergency_calls')
+        .insert(callData)
+        .select()
+        .single();
+
+      if (error) {
+        return res.status(400).json({ error: 'Erro ao registrar chamada de emergência' });
+      }
+
+      res.status(201).json({ 
+        message: 'Chamada de emergência registrada com sucesso', 
+        data,
+        emergency_number: '192',
+        instructions: 'Ligue imediatamente para 192 (SAMU) e informe sua localização.',
       });
+    } catch (error: any) {
+      console.error('Erro ao registrar chamada:', error);
+      res.status(500).json({ error: 'Erro ao registrar chamada de emergência' });
+    }
+  }
+);
+
+// Update emergency call status
+router.put('/calls/:id',
+  authMiddleware,
+  [
+    body('call_status').isIn(['registered', 'in_progress', 'completed', 'cancelled']),
+    body('notes').optional().isString(),
+  ],
+  async (req: Request, res: Response) => {
+    try {
+      const userId = (req as any).userId;
+      const { id } = req.params;
+      const { call_status, notes } = req.body;
+
+      const updateData: any = { call_status };
+      if (notes) updateData.notes = notes;
+
+      const { data, error } = await supabase
+        .from('emergency_calls')
+        .update(updateData)
+        .eq('id', id)
+        .eq('user_id', userId)
+        .select()
+        .single();
+
+      if (error) {
+        return res.status(400).json({ error: 'Erro ao atualizar chamada' });
+      }
+
+      res.json({ message: 'Chamada atualizada com sucesso', data });
+    } catch (error: any) {
+      console.error('Erro ao atualizar chamada:', error);
+      res.status(500).json({ error: 'Erro ao atualizar chamada' });
+    }
+  }
+);
+
+// Get specific emergency call
+router.get('/calls/:id', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).userId;
+    const { id } = req.params;
+
+    const { data, error } = await supabase
+      .from('emergency_calls')
+      .select('*')
+      .eq('id', id)
+      .eq('user_id', userId)
+      .single();
+
+    if (error || !data) {
+      return res.status(404).json({ error: 'Chamada não encontrada' });
     }
 
-    const userId = req.user!.id;
-    const { name, phone, type, relation } = req.body;
+    res.json({ data });
+  } catch (error: any) {
+    console.error('Erro ao buscar chamada:', error);
+    res.status(500).json({ error: 'Erro ao buscar chamada' });
+  }
+});
 
-    const contact = {
-      user_id: userId,
-      name,
-      phone,
-      type,
-      relation: relation || '',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+// Get emergency contacts info
+router.get('/contacts', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).userId;
+
+    // Get user's emergency contact from profile
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('emergency_contact_name, emergency_contact_phone')
+      .eq('user_id', userId)
+      .single();
+
+    const emergencyInfo = {
+      samu: '192',
+      ambulance: '192',
+      fire_department: '193',
+      police: '190',
+      personal_contact: profile ? {
+        name: profile.emergency_contact_name,
+        phone: profile.emergency_contact_phone,
+      } : null,
     };
 
-    const { data, error } = await supabase
-      .from('emergency_contacts')
-      .insert(contact)
-      .select()
-      .single();
-
-    if (error) {
-      throw error;
-    }
-
-    res.status(201).json({
-      message: 'Contato adicionado com sucesso',
-      contact: data,
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Atualizar contato de emergência
-router.put('/contacts/:id', [
-  authenticateToken,
-  body('name').optional().notEmpty().withMessage('Nome não pode estar vazio'),
-  body('phone').optional().notEmpty().withMessage('Telefone não pode estar vazio'),
-  body('type').optional().isIn(['personal', 'medical', 'emergency']).withMessage('Tipo inválido'),
-], async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        error: 'Dados inválidos',
-        details: errors.array(),
-      });
-    }
-
-    const userId = req.user!.id;
-    const { id } = req.params;
-    const updates = req.body;
-
-    // Verificar se o contato existe e pertence ao usuário
-    const { data: existingContact, error: selectError } = await supabase
-      .from('emergency_contacts')
-      .select('*')
-      .eq('id', id)
-      .eq('user_id', userId)
-      .single();
-    
-    if (selectError || !existingContact) {
-      return res.status(404).json({
-        error: 'Contato não encontrado',
-      });
-    }
-
-    const { data, error } = await supabase
-      .from('emergency_contacts')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', id)
-      .eq('user_id', userId)
-      .select()
-      .single();
-
-    if (error) {
-      throw error;
-    }
-
-    res.json({
-      message: 'Contato atualizado com sucesso',
-      contact: data,
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Deletar contato de emergência
-router.delete('/contacts/:id', authenticateToken, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  try {
-    const userId = req.user!.id;
-    const { id } = req.params;
-
-    // Verificar se o contato existe e pertence ao usuário
-    const { data: existingContact, error: selectError } = await supabase
-      .from('emergency_contacts')
-      .select('*')
-      .eq('id', id)
-      .eq('user_id', userId)
-      .single();
-    
-    if (selectError || !existingContact) {
-      return res.status(404).json({
-        error: 'Contato não encontrado',
-      });
-    }
-
-    const { error: deleteError } = await supabase
-      .from('emergency_contacts')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', userId);
-
-    if (deleteError) {
-      throw deleteError;
-    }
-
-    res.json({
-      message: 'Contato deletado com sucesso',
-    });
-  } catch (error) {
-    next(error);
+    res.json(emergencyInfo);
+  } catch (error: any) {
+    console.error('Erro ao buscar contatos:', error);
+    res.status(500).json({ error: 'Erro ao buscar contatos de emergência' });
   }
 });
 

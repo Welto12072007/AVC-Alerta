@@ -1,120 +1,162 @@
-import express, { Response, NextFunction } from 'express';
-import { body, validationResult } from 'express-validator';
-import { authenticateToken, AuthenticatedRequest } from '../middleware/auth';
+import { Router, Request, Response } from 'express';
+import { body } from 'express-validator';
 import { supabase } from '../config/supabase';
+import { authMiddleware } from '../middleware/auth';
 
-const router = express.Router();
+const router = Router();
 
-// Obter perfil do usuário
-router.get('/profile', authenticateToken, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+// Get user profile
+router.get('/profile', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const userId = req.user!.id;
+    const userId = (req as any).userId;
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id, email, full_name, cpf, phone, date_of_birth, created_at, updated_at')
       .eq('id', userId)
       .single();
-    
-    if (error || !data) {
-      return res.status(404).json({
-        error: 'Usuário não encontrado',
-      });
+
+    if (userError || !user) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
     }
-    
+
+    const { data: profile, error: profileError } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
     res.json({
-      user: {
-        id: userId,
-        ...data,
-      },
+      user,
+      profile: profile || null,
     });
-  } catch (error) {
-    next(error);
+  } catch (error: any) {
+    console.error('Erro ao buscar perfil:', error);
+    res.status(500).json({ error: 'Erro ao buscar perfil do usuário' });
   }
 });
 
-// Atualizar perfil do usuário
-router.put('/profile', [
-  authenticateToken,
-  body('name').optional().notEmpty().withMessage('Nome não pode estar vazio'),
-  body('age').optional().isInt({ min: 1, max: 120 }).withMessage('Idade inválida'),
-  body('gender').optional().isIn(['male', 'female', 'other']).withMessage('Gênero inválido'),
-], async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        error: 'Dados inválidos',
-        details: errors.array(),
-      });
+// Update user basic info
+router.put('/profile', 
+  authMiddleware,
+  [
+    body('full_name').optional().isString(),
+    body('phone').optional().isString(),
+    body('date_of_birth').optional().isISO8601(),
+  ],
+  async (req: Request, res: Response) => {
+    try {
+      const userId = (req as any).userId;
+      const { full_name, phone, date_of_birth } = req.body;
+
+      const updateData: any = {};
+      if (full_name !== undefined) updateData.full_name = full_name;
+      if (phone !== undefined) updateData.phone = phone;
+      if (date_of_birth !== undefined) updateData.date_of_birth = date_of_birth;
+
+      const { data, error } = await supabase
+        .from('users')
+        .update(updateData)
+        .eq('id', userId)
+        .select()
+        .single();
+
+      if (error) {
+        return res.status(400).json({ error: 'Erro ao atualizar usuário' });
+      }
+
+      res.json({ message: 'Perfil atualizado com sucesso', user: data });
+    } catch (error: any) {
+      console.error('Erro ao atualizar perfil:', error);
+      res.status(500).json({ error: 'Erro ao atualizar perfil' });
     }
+  }
+);
 
-    const userId = req.user!.id;
-    const updates = req.body;
+// Update user profile details
+router.put('/profile/details',
+  authMiddleware,
+  [
+    body('address').optional().isString(),
+    body('city').optional().isString(),
+    body('state').optional().isString(),
+    body('zip_code').optional().isString(),
+    body('emergency_contact_name').optional().isString(),
+    body('emergency_contact_phone').optional().isString(),
+    body('blood_type').optional().isString(),
+    body('allergies').optional().isString(),
+    body('chronic_conditions').optional().isString(),
+    body('current_medications').optional().isString(),
+    body('health_insurance').optional().isString(),
+  ],
+  async (req: Request, res: Response) => {
+    try {
+      const userId = (req as any).userId;
+      const profileData = req.body;
 
+      // Check if profile exists
+      const { data: existingProfile } = await supabase
+        .from('user_profiles')
+        .select('id')
+        .eq('user_id', userId)
+        .single();
+
+      let data, error;
+
+      if (existingProfile) {
+        // Update existing profile
+        const result = await supabase
+          .from('user_profiles')
+          .update(profileData)
+          .eq('user_id', userId)
+          .select()
+          .single();
+        
+        data = result.data;
+        error = result.error;
+      } else {
+        // Create new profile
+        const result = await supabase
+          .from('user_profiles')
+          .insert({ ...profileData, user_id: userId })
+          .select()
+          .single();
+        
+        data = result.data;
+        error = result.error;
+      }
+
+      if (error) {
+        return res.status(400).json({ error: 'Erro ao atualizar detalhes do perfil' });
+      }
+
+      res.json({ message: 'Detalhes do perfil atualizados com sucesso', profile: data });
+    } catch (error: any) {
+      console.error('Erro ao atualizar detalhes do perfil:', error);
+      res.status(500).json({ error: 'Erro ao atualizar detalhes do perfil' });
+    }
+  }
+);
+
+// Delete user account
+router.delete('/account', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).userId;
+
+    // Delete user (cascade will handle related records)
     const { error } = await supabase
-      .from('profiles')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString(),
-      })
+      .from('users')
+      .delete()
       .eq('id', userId);
 
     if (error) {
-      throw error;
+      return res.status(400).json({ error: 'Erro ao deletar conta' });
     }
 
-    res.json({
-      message: 'Perfil atualizado com sucesso',
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Obter estatísticas do usuário
-router.get('/stats', authenticateToken, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  try {
-    const userId = req.user!.id;
-
-    // Contar registros de saúde
-    const { count: healthCount, error: healthError } = await supabase
-      .from('health_readings')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId);
-
-    // Contar contatos de emergência
-    const { count: contactsCount, error: contactsError } = await supabase
-      .from('emergency_contacts')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId);
-
-    // Obter registros de saúde agrupados por tipo
-    const { data: healthReadings, error: healthReadingsError } = await supabase
-      .from('health_readings')
-      .select('type')
-      .eq('user_id', userId);
-
-    if (healthError || contactsError || healthReadingsError) {
-      throw new Error('Erro ao buscar estatísticas');
-    }
-
-    // Agrupar registros por tipo
-    const healthByType = healthReadings?.reduce((acc: Record<string, number>, reading) => {
-      acc[reading.type] = (acc[reading.type] || 0) + 1;
-      return acc;
-    }, {}) || {};
-
-    res.json({
-      stats: {
-        totalHealthReadings: healthCount || 0,
-        healthByType,
-        totalEmergencyContacts: contactsCount || 0,
-        lastActivity: new Date().toISOString(),
-      },
-    });
-  } catch (error) {
-    next(error);
+    res.json({ message: 'Conta deletada com sucesso' });
+  } catch (error: any) {
+    console.error('Erro ao deletar conta:', error);
+    res.status(500).json({ error: 'Erro ao deletar conta' });
   }
 });
 

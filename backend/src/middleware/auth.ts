@@ -1,55 +1,36 @@
 import { Request, Response, NextFunction } from 'express';
-import { supabaseAuth } from '../config/supabase';
+import { verifyToken, extractTokenFromHeader } from '../utils/jwtToken';
 
-interface AuthenticatedRequest extends Request {
-  user?: {
-    id: string;
-    email?: string;
-    name?: string;
-  };
+export interface AuthRequest extends Request {
+  userId?: string;
+  userEmail?: string;
 }
 
-export const authenticateToken = async (
-  req: AuthenticatedRequest,
+export const authMiddleware = async (
+  req: AuthRequest,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    const token = extractTokenFromHeader(req.headers.authorization);
 
     if (!token) {
-      return res.status(401).json({
-        error: 'Token de acesso requerido',
-        code: 'MISSING_TOKEN',
-      });
+      return res.status(401).json({ error: 'Token não fornecido' });
     }
 
-    // Verificar token com Supabase
-    const { data: { user }, error } = await supabaseAuth.auth.getUser(token);
-    
-    if (error || !user) {
-      return res.status(401).json({
-        error: 'Token inválido',
-        code: 'INVALID_TOKEN',
-      });
+    const decoded = verifyToken(token);
+
+    if (decoded.type !== 'access') {
+      return res.status(401).json({ error: 'Token inválido' });
     }
-    
-    req.user = {
-      id: user.id,
-      email: user.email,
-      name: user.user_metadata?.name || user.email,
-    };
+
+    req.userId = decoded.userId;
+    req.userEmail = decoded.email;
 
     next();
-  } catch (error) {
-    console.error('Erro na autenticação:', error);
-    
-    return res.status(401).json({
-      error: 'Falha na autenticação',
-      code: 'AUTH_FAILED',
-    });
+  } catch (error: any) {
+    return res.status(401).json({ error: error.message || 'Token inválido' });
   }
 };
 
-export type { AuthenticatedRequest };
+export default authMiddleware;

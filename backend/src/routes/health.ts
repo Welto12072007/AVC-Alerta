@@ -1,123 +1,159 @@
-import express, { Response, NextFunction } from 'express';
-import { body, validationResult } from 'express-validator';
-import { authenticateToken, AuthenticatedRequest } from '../middleware/auth';
+import { Router, Request, Response } from 'express';
+import { body } from 'express-validator';
 import { supabase } from '../config/supabase';
+import { authMiddleware } from '../middleware/auth';
 
-const router = express.Router();
+const router = Router();
 
-// Obter registros de saúde do usuário
-router.get('/readings', authenticateToken, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+// Get health monitoring history
+router.get('/monitoring', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const userId = req.user!.id;
-    const { type, limit = 50 } = req.query;
-
-    let query = supabase
-      .from('health_readings')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(parseInt(limit as string));
-
-    if (type) {
-      query = query.eq('type', type);
-    }
-
-    const { data: readings, error } = await query;
-
-    if (error) {
-      throw error;
-    }
-
-    res.json({
-      readings: readings || [],
-      total: readings?.length || 0,
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Adicionar novo registro de saúde
-router.post('/readings', [
-  authenticateToken,
-  body('type').isIn(['bp', 'heartRate', 'weight']).withMessage('Tipo inválido'),
-  body('value').notEmpty().withMessage('Valor é obrigatório'),
-], async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        error: 'Dados inválidos',
-        details: errors.array(),
-      });
-    }
-
-    const userId = req.user!.id;
-    const { type, value, notes } = req.body;
-
-    const reading = {
-      user_id: userId,
-      type,
-      value,
-      notes: notes || '',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
+    const userId = (req as any).userId;
+    const { limit = 50, offset = 0 } = req.query;
 
     const { data, error } = await supabase
-      .from('health_readings')
-      .insert(reading)
-      .select()
-      .single();
+      .from('health_monitoring')
+      .select('*')
+      .eq('user_id', userId)
+      .order('recorded_at', { ascending: false })
+      .range(Number(offset), Number(offset) + Number(limit) - 1);
 
     if (error) {
-      throw error;
+      return res.status(400).json({ error: 'Erro ao buscar histórico de monitoramento' });
     }
 
-    res.status(201).json({
-      message: 'Registro adicionado com sucesso',
-      reading: data,
-    });
-  } catch (error) {
-    next(error);
+    res.json({ data });
+  } catch (error: any) {
+    console.error('Erro ao buscar monitoramento:', error);
+    res.status(500).json({ error: 'Erro ao buscar histórico de monitoramento' });
   }
 });
 
-// Deletar registro de saúde
-router.delete('/readings/:id', authenticateToken, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+// Add health monitoring record
+router.post('/monitoring',
+  authMiddleware,
+  [
+    body('blood_pressure_systolic').optional().isInt({ min: 0, max: 300 }),
+    body('blood_pressure_diastolic').optional().isInt({ min: 0, max: 200 }),
+    body('heart_rate').optional().isInt({ min: 0, max: 300 }),
+    body('blood_glucose').optional().isFloat({ min: 0 }),
+    body('weight').optional().isFloat({ min: 0 }),
+    body('temperature').optional().isFloat({ min: 0 }),
+    body('notes').optional().isString(),
+  ],
+  async (req: Request, res: Response) => {
+    try {
+      const userId = (req as any).userId;
+      const monitoringData = {
+        user_id: userId,
+        blood_pressure_systolic: req.body.blood_pressure_systolic,
+        blood_pressure_diastolic: req.body.blood_pressure_diastolic,
+        heart_rate: req.body.heart_rate,
+        blood_glucose: req.body.blood_glucose,
+        weight: req.body.weight,
+        temperature: req.body.temperature,
+        notes: req.body.notes,
+      };
+
+      const { data, error } = await supabase
+        .from('health_monitoring')
+        .insert(monitoringData)
+        .select()
+        .single();
+
+      if (error) {
+        return res.status(400).json({ error: 'Erro ao registrar monitoramento' });
+      }
+
+      res.status(201).json({ message: 'Monitoramento registrado com sucesso', data });
+    } catch (error: any) {
+      console.error('Erro ao criar monitoramento:', error);
+      res.status(500).json({ error: 'Erro ao criar monitoramento' });
+    }
+  }
+);
+
+// Get specific monitoring record
+router.get('/monitoring/:id', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const userId = req.user!.id;
+    const userId = (req as any).userId;
     const { id } = req.params;
 
-    // Verificar se o registro existe e pertence ao usuário
-    const { data: existingReading, error: selectError } = await supabase
-      .from('health_readings')
+    const { data, error } = await supabase
+      .from('health_monitoring')
       .select('*')
       .eq('id', id)
       .eq('user_id', userId)
       .single();
-    
-    if (selectError || !existingReading) {
-      return res.status(404).json({
-        error: 'Registro não encontrado',
-      });
+
+    if (error || !data) {
+      return res.status(404).json({ error: 'Registro não encontrado' });
     }
 
-    const { error: deleteError } = await supabase
-      .from('health_readings')
+    res.json({ data });
+  } catch (error: any) {
+    console.error('Erro ao buscar registro:', error);
+    res.status(500).json({ error: 'Erro ao buscar registro' });
+  }
+});
+
+// Update monitoring record
+router.put('/monitoring/:id',
+  authMiddleware,
+  [
+    body('blood_pressure_systolic').optional().isInt({ min: 0, max: 300 }),
+    body('blood_pressure_diastolic').optional().isInt({ min: 0, max: 200 }),
+    body('heart_rate').optional().isInt({ min: 0, max: 300 }),
+    body('blood_glucose').optional().isFloat({ min: 0 }),
+    body('weight').optional().isFloat({ min: 0 }),
+    body('temperature').optional().isFloat({ min: 0 }),
+    body('notes').optional().isString(),
+  ],
+  async (req: Request, res: Response) => {
+    try {
+      const userId = (req as any).userId;
+      const { id } = req.params;
+
+      const { data, error } = await supabase
+        .from('health_monitoring')
+        .update(req.body)
+        .eq('id', id)
+        .eq('user_id', userId)
+        .select()
+        .single();
+
+      if (error) {
+        return res.status(400).json({ error: 'Erro ao atualizar registro' });
+      }
+
+      res.json({ message: 'Registro atualizado com sucesso', data });
+    } catch (error: any) {
+      console.error('Erro ao atualizar registro:', error);
+      res.status(500).json({ error: 'Erro ao atualizar registro' });
+    }
+  }
+);
+
+// Delete monitoring record
+router.delete('/monitoring/:id', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).userId;
+    const { id } = req.params;
+
+    const { error } = await supabase
+      .from('health_monitoring')
       .delete()
       .eq('id', id)
       .eq('user_id', userId);
 
-    if (deleteError) {
-      throw deleteError;
+    if (error) {
+      return res.status(400).json({ error: 'Erro ao deletar registro' });
     }
 
-    res.json({
-      message: 'Registro deletado com sucesso',
-    });
-  } catch (error) {
-    next(error);
+    res.json({ message: 'Registro deletado com sucesso' });
+  } catch (error: any) {
+    console.error('Erro ao deletar registro:', error);
+    res.status(500).json({ error: 'Erro ao deletar registro' });
   }
 });
 

@@ -1,120 +1,149 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express, { Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
-import { supabase, supabaseAuth } from '../config/supabase';
-import bcrypt from 'bcryptjs';
+import { supabase } from '../config/supabase';
+import { hashPassword, comparePassword, validatePasswordStrength } from '../utils/passwordHash';
+import { generateAccessToken, generateRefreshToken, verifyToken } from '../utils/jwtToken';
 
 const router = express.Router();
 
-// Registrar usuário
-router.post('/register', [
-  body('email').isEmail().withMessage('Email inválido'),
-  body('password').isLength({ min: 6 }).withMessage('Senha deve ter pelo menos 6 caracteres'),
-  body('name').notEmpty().withMessage('Nome é obrigatório'),
-], async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        error: 'Dados inválidos',
-        details: errors.array(),
-      });
-    }
+// Registro
+router.post('/register',
+  [
+    body('email').isEmail().withMessage('Email inválido'),
+    body('password').isLength({ min: 8 }).withMessage('Senha deve ter 8+ caracteres'),
+    body('fullName').notEmpty().withMessage('Nome completo obrigatório'),
+  ],
+  async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ error: 'Dados inválidos', details: errors.array() });
+      }
 
-    const { email, password, name } = req.body;
+      const { email, password, fullName, phone, birthDate, gender } = req.body;
 
-    // Criar usuário no Supabase Auth
-    const { data: authData, error: authError } = await supabaseAuth.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          name,
+      // Validar força da senha
+      const passwordValidation = validatePasswordStrength(password);
+      if (!passwordValidation.isValid) {
+        return res.status(400).json({ error: 'Senha fraca', details: passwordValidation.errors });
+      }
+
+      // Hash da senha
+      const passwordHash = await hashPassword(password);
+
+      // Inserir usuário
+      const { data: user, error } = await supabase
+        .from('users')
+        .insert([{ email, password_hash: passwordHash, full_name: fullName, phone, birth_date: birthDate, gender }])
+        .select()
+        .single();
+
+      if (error) {
+        if (error.code === '23505') {
+          return res.status(409).json({ error: 'Email já cadastrado' });
         }
+        throw error;
       }
-    });
 
-    if (authError) {
-      return res.status(400).json({
-        error: authError.message,
-        code: 'SIGNUP_FAILED',
+      // Criar perfil
+      await supabase.from('user_profiles').insert([{ user_id: user.id }]);
+
+      // Gerar tokens
+      const accessToken = generateAccessToken(user.id, user.email);
+      const refreshToken = generateRefreshToken(user.id, user.email);
+
+      res.status(201).json({
+        message: 'Usuário criado com sucesso',
+        user: { id: user.id, email: user.email, fullName: user.full_name },
+        accessToken,
+        refreshToken,
       });
+    } catch (error: any) {
+      console.error('Erro no registro:', error);
+      res.status(500).json({ error: 'Erro ao criar usuário' });
     }
-
-    // Salvar dados adicionais na tabela profiles
-    if (authData.user) {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: authData.user.id,
-          name,
-          email,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
-
-      if (profileError) {
-        console.error('Erro ao criar perfil:', profileError);
-        // Não falha o registro se houver erro no perfil
-      }
-    }
-
-    res.status(201).json({
-      message: 'Usuário criado com sucesso',
-      user: {
-        id: authData.user?.id,
-        email: authData.user?.email,
-        name,
-      },
-    });
-  } catch (error) {
-    next(error);
   }
-});
+);
 
 // Login
-router.post('/login', [
-  body('email').isEmail().withMessage('Email inválido'),
-  body('password').notEmpty().withMessage('Senha é obrigatória'),
-], async (req: Request, res: Response, next: NextFunction) => {
+router.post('/login',
+  [
+    body('email').isEmail().withMessage('Email inválido'),
+    body('password').notEmpty().withMessage('Senha obrigatória'),
+  ],
+  async (req: Request, res: Response) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ error: 'Dados inválidos' });
+      }
+
+      const { email, password } = req.body;
+
+      // Buscar usuário
+      const { data: user, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', email)
+        .single();
+
+      if (error || !user) {
+        return res.status(401).json({ error: 'Email ou senha incorretos' });
+      }
+
+      if (!user.is_active) {
+        return res.status(403).json({ error: 'Conta desativada' });
+      }
+
+      // Verificar senha
+      const passwordMatch = await comparePassword(password, user.password_hash);
+      if (!passwordMatch) {
+        return res.status(401).json({ error: 'Email ou senha incorretos' });
+      }
+
+      // Atualizar last_login
+      await supabase
+        .from('users')
+        .update({ last_login: new Date().toISOString() })
+        .eq('id', user.id);
+
+      // Gerar tokens
+      const accessToken = generateAccessToken(user.id, user.email);
+      const refreshToken = generateRefreshToken(user.id, user.email);
+
+      res.json({
+        message: 'Login realizado com sucesso',
+        user: { id: user.id, email: user.email, fullName: user.full_name },
+        accessToken,
+        refreshToken,
+      });
+    } catch (error) {
+      console.error('Erro no login:', error);
+      res.status(500).json({ error: 'Erro ao fazer login' });
+    }
+  }
+);
+
+// Refresh Token
+router.post('/refresh', async (req: Request, res: Response) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        error: 'Dados inválidos',
-        details: errors.array(),
-      });
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return res.status(400).json({ error: 'Refresh token obrigatório' });
     }
 
-    const { email, password } = req.body;
+    const decoded = verifyToken(refreshToken);
 
-    // Fazer login com Supabase Auth
-    const { data, error } = await supabaseAuth.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      return res.status(401).json({
-        error: 'Credenciais inválidas',
-        code: 'LOGIN_FAILED',
-      });
+    if (decoded.type !== 'refresh') {
+      return res.status(401).json({ error: 'Token inválido' });
     }
 
-    res.json({
-      message: 'Login realizado com sucesso',
-      user: {
-        id: data.user.id,
-        email: data.user.email,
-        name: data.user.user_metadata?.name,
-      },
-      session: {
-        access_token: data.session?.access_token,
-        refresh_token: data.session?.refresh_token,
-        expires_at: data.session?.expires_at,
-      },
-    });
-  } catch (error) {
-    next(error);
+    const newAccessToken = generateAccessToken(decoded.userId, decoded.email);
+
+    res.json({ accessToken: newAccessToken });
+  } catch (error: any) {
+    res.status(401).json({ error: error.message || 'Token inválido' });
   }
 });
 
