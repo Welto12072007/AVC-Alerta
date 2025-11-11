@@ -17,9 +17,10 @@
       "output": "single",
       "favicon": "./assets/images/logo.png"
     },
-    "plugins": ["expo-router", "expo-font", "expo-web-browser"],
+  "plugins": ["expo-router", "expo-font", "expo-web-browser"],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "sdkVersion": "54.0.0"
   }
 }
