@@ -37,25 +37,33 @@ export default function InformationScreen() {
 
       <View style={styles.statisticsCard}>
         <Text style={styles.statisticsTitle}>AVC em Números - Brasil</Text>
-        <View style={styles.statisticsRow}>
-          <View style={styles.statisticItem}>
-            <Text style={styles.statisticNumber}>90 mil</Text>
-            <Text style={styles.statisticLabel}>Óbitos por ano</Text>
-          </View>
-          <View style={styles.statisticItem}>
-            <Text style={styles.statisticNumber}>400 mil</Text>
-            <Text style={styles.statisticLabel}>Novos casos por ano</Text>
-          </View>
+        
+        <View style={styles.factItem}>
+          <Text style={styles.factBullet}>•</Text>
+          <Text style={styles.factText}>
+            Uma pessoa morre a cada 6 minutos em decorrência do AVC.
+          </Text>
         </View>
-        <View style={styles.statisticsRow}>
-          <View style={styles.statisticItem}>
-            <Text style={styles.statisticNumber}>2ª</Text>
-            <Text style={styles.statisticLabel}>Maior causa de morte</Text>
-          </View>
-          <View style={styles.statisticItem}>
-            <Text style={styles.statisticNumber}>1ª</Text>
-            <Text style={styles.statisticLabel}>Causa de incapacidade</Text>
-          </View>
+
+        <View style={styles.factItem}>
+          <Text style={styles.factBullet}>•</Text>
+          <Text style={styles.factText}>
+            O AVC é a principal causa de incapacitação física e a segunda maior causa de comprometimento cognitivo.
+          </Text>
+        </View>
+
+        <View style={styles.factItem}>
+          <Text style={styles.factBullet}>•</Text>
+          <Text style={styles.factText}>
+            O número de internações por AVC aumentou, com mais de 85 mil hospitalizações recentes, e os custos hospitalares se aproximam de R$ 910 milhões.
+          </Text>
+        </View>
+
+        <View style={styles.factItem}>
+          <Text style={styles.factBullet}>•</Text>
+          <Text style={styles.factText}>
+            Casos de AVC estão crescendo entre adultos jovens, com aumento de 66% em menores de 45 anos na última década.
+          </Text>
         </View>
       </View>
 
@@ -185,9 +193,9 @@ export default function InformationScreen() {
               </View>
             </View>
             
-            <Link href="/(tabs)/symptom-checker" asChild>
+            <Link href="/(tabs)/emergency" asChild>
               <TouchableOpacity style={styles.actionButton}>
-                <Text style={styles.actionButtonText}>Verificar Sintomas</Text>
+                <Text style={styles.actionButtonText}>Contatos de Emergência</Text>
                 <ArrowRight color="#FFFFFF" size={20} />
               </TouchableOpacity>
             </Link>
@@ -346,7 +354,7 @@ export default function InformationScreen() {
             </View>
             
             <Image
-              source={{ uri: 'https://images.pexels.com/photos/4225983/pexels-photo-4225983.jpeg' }}
+              source={{ uri: 'https://images.pexels.com/photos/8460287/pexels-photo-8460287.jpeg' }}
               style={styles.sectionImage}
               resizeMode="cover"
             />
@@ -399,7 +407,7 @@ export default function InformationScreen() {
               
               <View style={styles.preventionItem}>
                 <Image
-                  source={{ uri: 'https://images.pexels.com/photos/2994594/pexels-photo-2994594.jpeg' }}
+                  source={{ uri: 'https://images.pexels.com/photos/4662438/pexels-photo-4662438.jpeg' }}
                   style={styles.preventionImage}
                   resizeMode="cover"
                 />
@@ -493,6 +501,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#E0E7FF',
     textAlign: 'center',
+  },
+  factItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+    paddingHorizontal: 8,
+  },
+  factBullet: {
+    fontSize: 20,
+    color: '#FFFFFF',
+    marginRight: 12,
+    marginTop: -2,
+  },
+  factText: {
+    fontSize: 15,
+    color: '#FFFFFF',
+    lineHeight: 22,
+    flex: 1,
   },
   infoSection: {
     backgroundColor: '#FFFFFF',

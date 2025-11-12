@@ -55,7 +55,7 @@ export default function NutritionScreen() {
       id: 3,
       name: 'Grãos Integrais',
       category: 'recommended',
-      image: 'https://images.pexels.com/photos/1537169/pexels-photo-1537169.jpeg',
+      image: 'https://images.pexels.com/photos/4110251/pexels-photo-4110251.jpeg',
       description: 'Alimentos como aveia, arroz integral e pão integral são ricos em fibras e ajudam a controlar o colesterol e a pressão arterial.',
       benefits: [
         'Ricos em fibras',
@@ -67,7 +67,7 @@ export default function NutritionScreen() {
       id: 4,
       name: 'Nozes e Sementes',
       category: 'recommended',
-      image: 'https://images.pexels.com/photos/1067665/pexels-photo-1067665.jpeg',
+      image: 'https://images.pexels.com/photos/1295572/pexels-photo-1295572.jpeg',
       description: 'Nozes, castanhas, amêndoas e sementes contêm ácidos graxos saudáveis, proteínas e fibras que protegem o coração.',
       benefits: [
         'Gorduras saudáveis',
@@ -91,7 +91,7 @@ export default function NutritionScreen() {
       id: 6,
       name: 'Alimentos Ricos em Sal',
       category: 'avoid',
-      image: 'https://images.pexels.com/photos/1300972/pexels-photo-1300972.jpeg',
+      image: 'https://images.pexels.com/photos/1199957/pexels-photo-1199957.jpeg',
       description: 'Alimentos industrializados, embutidos, conservas e fast food geralmente contêm altos níveis de sódio, que aumenta a pressão arterial.',
       reasons: [
         'Aumentam a pressão arterial',
@@ -115,7 +115,7 @@ export default function NutritionScreen() {
       id: 8,
       name: 'Açúcares Refinados',
       category: 'avoid',
-      image: 'https://images.pexels.com/photos/1528013/pexels-photo-1528013.jpeg',
+      image: 'https://images.pexels.com/photos/890577/pexels-photo-890577.jpeg',
       description: 'Refrigerantes, doces, bolos e outros alimentos ricos em açúcar aumentam o risco de obesidade, diabetes e inflamação.',
       reasons: [
         'Provocam inflamação',

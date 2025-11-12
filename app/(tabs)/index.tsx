@@ -1,10 +1,35 @@
 import { useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image, Linking, Alert, Platform } from 'react-native';
 import { Link } from 'expo-router';
-import { TriangleAlert as AlertTriangle, Heart, Utensils, Activity, Clock, Info, PhoneCall } from 'lucide-react-native';
+import { TriangleAlert as AlertTriangle, Utensils, Activity, Clock, Info, PhoneCall, LineChart } from 'lucide-react-native';
 
 export default function HomeScreen() {
   const [showWelcome, setShowWelcome] = useState(true);
+
+  const handleEmergencyCall = async () => {
+    const phoneNumber = '192';
+    
+    // No web, mostra alerta
+    if (Platform.OS === 'web') {
+      Alert.alert('🚨 SAMU - 192', 'Funcionalidade disponível apenas em dispositivos móveis.\n\nEm caso de emergência, disque 192');
+      return;
+    }
+    
+    // Tenta abrir diretamente sem verificar primeiro (mais compatível com Expo Go)
+    const url = `tel:${phoneNumber}`;
+    
+    try {
+      await Linking.openURL(url);
+    } catch (error) {
+      console.error('Erro ao fazer ligação:', error);
+      // Se falhar, mostra mensagem com o número
+      Alert.alert(
+        '🚨 SAMU - 192', 
+        'Não foi possível abrir o discador automaticamente.\n\nPor favor, disque 192 manualmente.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
 
   return (
     <ScrollView style={styles.container}>
@@ -23,22 +48,26 @@ export default function HomeScreen() {
         </View>
       )}
 
-      <View style={styles.emergencyCard}>
+      <TouchableOpacity 
+        style={styles.emergencyCard}
+        onPress={handleEmergencyCall}
+        activeOpacity={0.8}
+      >
         <AlertTriangle color="#FFFFFF" size={24} />
         <Text style={styles.emergencyText}>
           Suspeita de AVC? Ligue imediatamente para o SAMU: 192
         </Text>
-      </View>
+      </TouchableOpacity>
 
       <Text style={styles.sectionTitle}>Acesso Rápido</Text>
       
       <View style={styles.quickAccessGrid}>
-        <Link href="/(tabs)/symptom-checker" asChild>
+        <Link href="/(tabs)/monitoring" asChild>
           <TouchableOpacity style={styles.quickAccessItem}>
-            <View style={[styles.iconContainer, { backgroundColor: '#EF4444' }]}>
-              <Heart color="#FFFFFF" size={24} />
+            <View style={[styles.iconContainer, { backgroundColor: '#8B5CF6' }]}>
+              <LineChart color="#FFFFFF" size={24} />
             </View>
-            <Text style={styles.quickAccessText}>Verificar Sintomas</Text>
+            <Text style={styles.quickAccessText}>Monitoramento</Text>
           </TouchableOpacity>
         </Link>
         

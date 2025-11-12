@@ -77,12 +77,6 @@ export default function WelcomeScreen() {
           </TouchableOpacity>
           
           <Text style={styles.registerSubtext}>cadastre sua conta agora mesmo</Text>
-
-          {/* Google Sign In */}
-          <TouchableOpacity style={styles.googleButton}>
-            <Text style={styles.googleButtonText}>G</Text>
-            <Text style={styles.googleText}>Sign in with Google</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Decoração inferior */}
@@ -106,7 +100,7 @@ const styles = StyleSheet.create({
     flex: 0.3,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: 40,
   },
   logoWrapper: {
     alignItems: 'center',
@@ -137,12 +131,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   buttonContainer: {
-    flex: 0.5,
     width: '100%',
     paddingHorizontal: 40,
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingTop: 20,
+    justifyContent: 'center',
+    paddingTop: 0,
+    paddingBottom: 20,
   },
   loginButton: {
     backgroundColor: '#FFFFFF',
@@ -193,30 +187,6 @@ const styles = StyleSheet.create({
     color: '#000000',
     marginBottom: 30,
     textAlign: 'center',
-  },
-  googleButton: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 25,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  googleButtonText: {
-    fontSize: 18,
-    fontFamily: 'Poppins_600SemiBold',
-    color: '#4285F4',
-    marginRight: 10,
-  },
-  googleText: {
-    fontSize: 16,
-    fontFamily: 'Poppins_400Regular',
-    color: '#000000',
   },
   bottomDecoration: {
     position: 'absolute',

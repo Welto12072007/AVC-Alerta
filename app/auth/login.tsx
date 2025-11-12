@@ -166,10 +166,6 @@ export default function LoginScreen() {
 
           {/* Links */}
           <View style={styles.linksContainer}>
-            <TouchableOpacity onPress={() => Alert.alert('Info', 'Funcionalidade em desenvolvimento')}>
-              <Text style={styles.linkText}>Esqueceu a senha?</Text>
-            </TouchableOpacity>
-            
             <TouchableOpacity onPress={() => router.push('/auth/register' as any)}>
               <Text style={styles.linkText}>primeiro acesso</Text>
             </TouchableOpacity>

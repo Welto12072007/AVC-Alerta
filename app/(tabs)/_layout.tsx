@@ -38,14 +38,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="symptom-checker"
-        options={{
-          title: 'Sintomas',
-          tabBarIcon: ({ color, size }) => <Heart size={size} color={color} />,
-          headerTitle: 'Identificar Sintomas',
-        }}
-      />
-      <Tabs.Screen
         name="information"
         options={{
           title: 'Informações',
@@ -74,7 +66,7 @@ export default function TabLayout() {
         name="monitoring"
         options={{
           title: 'Monitoramento',
-          tabBarIcon: ({color, size}) => <Utensils size={size} color={color}/>,
+          tabBarIcon: ({ color, size }) => <Heart size={size} color={color} />,
           headerTitle: 'Monitoramento',
           tabBarActiveTintColor: '#EF4444',
         }}

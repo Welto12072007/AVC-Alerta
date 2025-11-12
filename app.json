@@ -29,6 +29,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.avCalerta.app",
+      "permissions": ["CALL_PHONE"],
       "navigationBar": {
         "visible": false,
         "backgroundColor": "transparent"

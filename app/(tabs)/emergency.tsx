@@ -1,43 +1,101 @@
 import { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, TextInput } from 'react-native';
-import { Phone, Plus, CreditCard as Edit2, Trash2, CircleAlert as AlertCircle } from 'lucide-react-native';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, TextInput, Linking, Alert, Modal, ActivityIndicator } from 'react-native';
+import { Phone, Plus, CreditCard as Edit2, Trash2, CircleAlert as AlertCircle, X } from 'lucide-react-native';
+import emergencyContactsService, { EmergencyContact } from '@/services/emergencyContacts';
+
+type ContactType = 'emergency' | 'medical' | 'personal';
+
+interface Contact {
+  id: number | string;
+  name: string;
+  number: string;
+  type: ContactType;
+  relation?: string;
+  fixed?: boolean;
+}
 
 export default function EmergencyScreen() {
-  const [contacts, setContacts] = useState([
+  const [contacts, setContacts] = useState<Contact[]>([
     { id: 1, name: 'SAMU', number: '192', type: 'emergency', fixed: true },
     { id: 2, name: 'Bombeiros', number: '193', type: 'emergency', fixed: true },
     { id: 3, name: 'Polícia', number: '190', type: 'emergency', fixed: true },
   ]);
   
-  const [personalContacts, setPersonalContacts] = useState([]);
+  const [personalContacts, setPersonalContacts] = useState<Contact[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [editingContact, setEditingContact] = useState(null);
-  const [newContact, setNewContact] = useState({ name: '', number: '', relation: '', type: 'personal' });
+  const [editingContact, setEditingContact] = useState<Contact | null>(null);
+  const [newContact, setNewContact] = useState<Omit<Contact, 'id'>>({ name: '', number: '', relation: '', type: 'personal' });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   
-  const handleAddContact = () => {
+  const handleAddContact = async () => {
     if (newContact.name.trim() === '' || newContact.number.trim() === '') {
-      alert('Nome e número são obrigatórios');
+      Alert.alert('Campos obrigatórios', 'Nome e número são obrigatórios');
       return;
     }
     
-    if (editingContact) {
-      const updatedContacts = personalContacts.map(contact => 
-        contact.id === editingContact.id ? { ...newContact, id: contact.id } : contact
-      );
-      setPersonalContacts(updatedContacts);
-      setEditingContact(null);
-    } else {
-      const newId = personalContacts.length > 0 
-        ? Math.max(...personalContacts.map(c => c.id)) + 1 
-        : contacts.length + 1;
-      setPersonalContacts([...personalContacts, { ...newContact, id: newId }]);
-    }
+    setSaving(true);
     
-    setNewContact({ name: '', number: '', relation: '', type: 'personal' });
-    setShowAddForm(false);
+    try {
+      if (editingContact) {
+        // Atualizar contato existente
+        const updated = await emergencyContactsService.updateContact(
+          editingContact.id as string,
+          {
+            name: newContact.name,
+            phone_number: newContact.number,
+            relation: newContact.relation,
+            contact_type: newContact.type as 'personal' | 'medical',
+          }
+        );
+        
+        if (updated) {
+          // Atualizar localmente
+          setPersonalContacts(personalContacts.map(contact => 
+            contact.id === editingContact.id 
+              ? { ...newContact, id: contact.id, number: newContact.number } 
+              : contact
+          ));
+          Alert.alert('Sucesso', 'Contato atualizado com sucesso!');
+        } else {
+          Alert.alert('Erro', 'Não foi possível atualizar o contato');
+        }
+        setEditingContact(null);
+      } else {
+        // Criar novo contato
+        const created = await emergencyContactsService.createContact({
+          name: newContact.name,
+          phone_number: newContact.number,
+          relation: newContact.relation,
+          contact_type: newContact.type as 'personal' | 'medical',
+        });
+        
+        if (created) {
+          // Adicionar localmente
+          setPersonalContacts([...personalContacts, {
+            id: created.id!,
+            name: created.name,
+            number: created.phone_number,
+            relation: created.relation,
+            type: created.contact_type,
+          }]);
+          Alert.alert('Sucesso', 'Contato adicionado com sucesso!');
+        } else {
+          Alert.alert('Erro', 'Não foi possível adicionar o contato');
+        }
+      }
+      
+      setNewContact({ name: '', number: '', relation: '', type: 'personal' });
+      setShowAddForm(false);
+    } catch (error) {
+      console.error('Erro ao salvar contato:', error);
+      Alert.alert('Erro', 'Ocorreu um erro ao salvar o contato');
+    } finally {
+      setSaving(false);
+    }
   };
   
-  const handleEditContact = (contact) => {
+  const handleEditContact = (contact: Contact) => {
     setEditingContact(contact);
     setNewContact({
       name: contact.name,
@@ -48,13 +106,69 @@ export default function EmergencyScreen() {
     setShowAddForm(true);
   };
   
-  const handleDeleteContact = (id) => {
-    setPersonalContacts(personalContacts.filter(contact => contact.id !== id));
+  const handleDeleteContact = async (id: number | string) => {
+    Alert.alert(
+      'Confirmar exclusão',
+      'Tem certeza que deseja excluir este contato?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const success = await emergencyContactsService.deleteContact(id as string);
+              if (success) {
+                setPersonalContacts(personalContacts.filter(contact => contact.id !== id));
+                Alert.alert('Sucesso', 'Contato excluído com sucesso!');
+              } else {
+                Alert.alert('Erro', 'Não foi possível excluir o contato');
+              }
+            } catch (error) {
+              console.error('Erro ao excluir contato:', error);
+              Alert.alert('Erro', 'Ocorreu um erro ao excluir o contato');
+            }
+          },
+        },
+      ]
+    );
   };
   
-  const handleCallEmergency = (number) => {
-    // In a real app, this would use Linking.openURL(`tel:${number}`);
-    alert(`Simulando chamada para ${number}`);
+  const handleCallEmergency = async (number: string) => {
+    // Remove caracteres não numéricos, mas mantém o + se existir no início
+    const phoneNumber = number.replace(/[^\d+]/g, '');
+    
+    // No web, mostra alerta
+    if (Platform.OS === 'web') {
+      Alert.alert('📱 Ligar', `Número: ${phoneNumber}\n\nFuncionalidade disponível apenas em dispositivos móveis.`);
+      return;
+    }
+    
+    // Tenta abrir diretamente sem verificar primeiro (mais compatível com Expo Go)
+    const url = `tel:${phoneNumber}`;
+    
+    try {
+      await Linking.openURL(url);
+    } catch (error) {
+      console.error('Erro ao fazer ligação:', error);
+      // Se falhar, tenta verificar o suporte
+      try {
+        const canOpen = await Linking.canOpenURL(url);
+        if (!canOpen) {
+          Alert.alert(
+            'Não disponível', 
+            `Não foi possível abrir o discador.\n\nNúmero: ${phoneNumber}\n\nTente discar manualmente.`,
+            [{ text: 'OK' }]
+          );
+        }
+      } catch (err) {
+        Alert.alert(
+          'Erro', 
+          `Erro ao tentar abrir o discador.\n\nNúmero: ${phoneNumber}\n\nDisque manualmente este número.`,
+          [{ text: 'OK' }]
+        );
+      }
+    }
   };
   
   const handleCancel = () => {
@@ -64,12 +178,31 @@ export default function EmergencyScreen() {
   };
   
   useEffect(() => {
-    // In a real app, this would load contacts from local storage
-    const loadedContacts = [
-      { id: 4, name: 'Dr. Silva', number: '(11) 98765-4321', relation: 'Neurologista', type: 'medical' },
-    ];
-    setPersonalContacts(loadedContacts);
+    loadContacts();
   }, []);
+
+  const loadContacts = async () => {
+    try {
+      setLoading(true);
+      const contacts = await emergencyContactsService.getAllContacts();
+      
+      // Converter formato do Supabase para o formato local
+      const formattedContacts: Contact[] = contacts.map(contact => ({
+        id: contact.id!,
+        name: contact.name,
+        number: contact.phone_number,
+        relation: contact.relation,
+        type: contact.contact_type,
+      }));
+      
+      setPersonalContacts(formattedContacts);
+    } catch (error) {
+      console.error('Erro ao carregar contatos:', error);
+      Alert.alert('Erro', 'Não foi possível carregar seus contatos');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <ScrollView style={styles.container}>
@@ -79,6 +212,13 @@ export default function EmergencyScreen() {
           Em caso de suspeita de AVC, ligue imediatamente para o SAMU (192)
         </Text>
       </View>
+      
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#3B82F6" />
+          <Text style={styles.loadingText}>Carregando contatos...</Text>
+        </View>
+      ) : null}
       
       <Text style={styles.sectionTitle}>Serviços de Emergência</Text>
       <View style={styles.contactsContainer}>
@@ -209,97 +349,123 @@ export default function EmergencyScreen() {
         )}
       </View>
       
-      {showAddForm && (
-        <View style={styles.formContainer}>
-          <Text style={styles.formTitle}>
-            {editingContact ? 'Editar Contato' : 'Adicionar Contato'}
-          </Text>
-          
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Nome</Text>
-            <TextInput
-              style={styles.input}
-              value={newContact.name}
-              onChangeText={(text) => setNewContact({...newContact, name: text})}
-              placeholder="Nome do contato"
-            />
-          </View>
-          
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Número</Text>
-            <TextInput
-              style={styles.input}
-              value={newContact.number}
-              onChangeText={(text) => setNewContact({...newContact, number: text})}
-              placeholder="(00) 00000-0000"
-              keyboardType="phone-pad"
-            />
-          </View>
-          
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Relação/Observação (opcional)</Text>
-            <TextInput
-              style={styles.input}
-              value={newContact.relation}
-              onChangeText={(text) => setNewContact({...newContact, relation: text})}
-              placeholder="Ex: Irmão, Cardiologista, etc."
-            />
-          </View>
-          
-          <View style={styles.typeSelector}>
-            <Text style={styles.inputLabel}>Tipo de Contato</Text>
-            <View style={styles.typeOptions}>
+      
+      <Modal
+        visible={showAddForm}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={handleCancel}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {editingContact ? 'Editar Contato' : 'Novo Contato'}
+              </Text>
+              <TouchableOpacity onPress={handleCancel} style={styles.closeButton}>
+                <X color="#64748B" size={24} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Nome *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={newContact.name}
+                  onChangeText={(text) => setNewContact({...newContact, name: text})}
+                  placeholder="Ex: Maria Silva"
+                  placeholderTextColor="#94A3B8"
+                />
+              </View>
+              
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Número *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={newContact.number}
+                  onChangeText={(text) => setNewContact({...newContact, number: text})}
+                  placeholder="(00) 00000-0000"
+                  placeholderTextColor="#94A3B8"
+                  keyboardType="phone-pad"
+                />
+              </View>
+              
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Relação (opcional)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={newContact.relation}
+                  onChangeText={(text) => setNewContact({...newContact, relation: text})}
+                  placeholder="Ex: Irmã, Neurologista, Hospital"
+                  placeholderTextColor="#94A3B8"
+                />
+              </View>
+              
+              <View style={styles.typeSelector}>
+                <Text style={styles.inputLabel}>Tipo de Contato *</Text>
+                <View style={styles.typeOptions}>
+                  <TouchableOpacity
+                    style={[
+                      styles.typeOption,
+                      newContact.type === 'medical' && styles.selectedTypeOption
+                    ]}
+                    onPress={() => setNewContact({...newContact, type: 'medical'})}
+                  >
+                    <Text
+                      style={[
+                        styles.typeOptionText,
+                        newContact.type === 'medical' && styles.selectedTypeOptionText
+                      ]}
+                    >
+                      👨‍⚕️ Médico
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.typeOption,
+                      newContact.type === 'personal' && styles.selectedTypeOption
+                    ]}
+                    onPress={() => setNewContact({...newContact, type: 'personal'})}
+                  >
+                    <Text
+                      style={[
+                        styles.typeOptionText,
+                        newContact.type === 'personal' && styles.selectedTypeOptionText
+                      ]}
+                    >
+                      👤 Pessoal
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
               <TouchableOpacity
-                style={[
-                  styles.typeOption,
-                  newContact.type === 'personal' && styles.selectedTypeOption
-                ]}
-                onPress={() => setNewContact({...newContact, type: 'personal'})}
+                style={[styles.modalButton, styles.modalCancelButton]}
+                onPress={handleCancel}
+                disabled={saving}
               >
-                <Text
-                  style={[
-                    styles.typeOptionText,
-                    newContact.type === 'personal' && styles.selectedTypeOptionText
-                  ]}
-                >
-                  Pessoal
-                </Text>
+                <Text style={styles.modalCancelButtonText}>Cancelar</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[
-                  styles.typeOption,
-                  newContact.type === 'medical' && styles.selectedTypeOption
-                ]}
-                onPress={() => setNewContact({...newContact, type: 'medical'})}
+                style={[styles.modalButton, styles.modalSaveButton, saving && styles.modalSaveButtonDisabled]}
+                onPress={handleAddContact}
+                disabled={saving}
               >
-                <Text
-                  style={[
-                    styles.typeOptionText,
-                    newContact.type === 'medical' && styles.selectedTypeOptionText
-                  ]}
-                >
-                  Médico
-                </Text>
+                {saving ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.modalSaveButtonText}>
+                    {editingContact ? 'Atualizar' : 'Adicionar'}
+                  </Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
-          
-          <View style={styles.formButtons}>
-            <TouchableOpacity
-              style={[styles.formButton, styles.cancelButton]}
-              onPress={handleCancel}
-            >
-              <Text style={styles.cancelButtonText}>Cancelar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.formButton, styles.saveButton]}
-              onPress={handleAddContact}
-            >
-              <Text style={styles.saveButtonText}>Salvar</Text>
-            </TouchableOpacity>
-          </View>
         </View>
-      )}
+      </Modal>
       
       <View style={styles.emergencyTips}>
         <Text style={styles.tipsTitle}>Dicas em Caso de Emergência</Text>
@@ -342,6 +508,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F1F5F9',
+  },
+  loadingContainer: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#64748B',
   },
   emergencyHeader: {
     backgroundColor: '#EF4444',
@@ -487,47 +663,52 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   inputGroup: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   inputLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#64748B',
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1E293B',
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#F1F5F9',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     fontSize: 16,
-    color: '#334155',
+    color: '#1E293B',
   },
   typeSelector: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   typeOptions: {
     flexDirection: 'row',
     marginTop: 8,
+    gap: 12,
   },
   typeOption: {
     flex: 1,
-    paddingVertical: 10,
-    marginHorizontal: 4,
-    borderRadius: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
     backgroundColor: '#F1F5F9',
+    borderWidth: 2,
+    borderColor: '#E2E8F0',
     alignItems: 'center',
   },
   selectedTypeOption: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#EFF6FF',
+    borderColor: '#3B82F6',
   },
   typeOptionText: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 15,
+    fontWeight: '600',
     color: '#64748B',
   },
   selectedTypeOptionText: {
-    color: '#FFFFFF',
+    color: '#3B82F6',
   },
   formButtons: {
     flexDirection: 'row',
@@ -553,6 +734,83 @@ const styles = StyleSheet.create({
     backgroundColor: '#3B82F6',
   },
   saveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  // Estilos do Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '85%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#1E293B',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  modalBody: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 10,
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCancelButton: {
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  modalCancelButtonText: {
+    color: '#475569',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalSaveButton: {
+    backgroundColor: '#3B82F6',
+  },
+  modalSaveButtonDisabled: {
+    backgroundColor: '#94A3B8',
+    opacity: 0.6,
+  },
+  modalSaveButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
