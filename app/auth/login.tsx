@@ -15,6 +15,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as NavigationBar from 'expo-navigation-bar';
+import { supabaseAuthService } from '../../services/supabaseAuth';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -50,18 +51,19 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      // TODO: Implementar chamada para API de login
-      console.log('Login attempt:', { email, password, rememberMe });
+      const result = await supabaseAuthService.login(email, password);
       
-      // Simulação de login por enquanto
-      setTimeout(() => {
-        setLoading(false);
+      if (result.success) {
         Alert.alert('Sucesso', 'Login realizado com sucesso!');
         router.replace('/(tabs)');
-      }, 2000);
+      } else {
+        Alert.alert('Erro', result.error || 'Email ou senha incorretos');
+      }
     } catch (error) {
+      console.error('Login error:', error);
+      Alert.alert('Erro', 'Falha no login. Verifique sua conexão e tente novamente.');
+    } finally {
       setLoading(false);
-      Alert.alert('Erro', 'Falha no login. Tente novamente.');
     }
   };
 

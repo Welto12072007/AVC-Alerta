@@ -15,7 +15,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as NavigationBar from 'expo-navigation-bar';
-import { authService } from '@/services/auth';
+import { supabaseAuthService } from '@/services/supabaseAuth';
 
 export default function RegisterScreen() {
   const [fullName, setFullName] = useState('');
@@ -56,7 +56,7 @@ export default function RegisterScreen() {
 
     setLoading(true);
     try {
-      const response = await authService.register({
+      const response = await supabaseAuthService.register({
         email,
         password,
         fullName,
@@ -65,7 +65,7 @@ export default function RegisterScreen() {
       setLoading(false);
 
       if (response.success) {
-        Alert.alert('Sucesso', 'Conta criada com sucesso!', [
+        Alert.alert('Sucesso', 'Conta criada com sucesso! Você já pode fazer login.', [
           {
             text: 'OK',
             onPress: () => router.replace('/auth/login'),
@@ -76,7 +76,7 @@ export default function RegisterScreen() {
       }
     } catch (error) {
       setLoading(false);
-      Alert.alert('Erro', 'Erro de conexão com o servidor. Verifique se o backend está rodando.');
+      Alert.alert('Erro', 'Erro inesperado ao criar conta.');
       console.error('Erro no registro:', error);
     }
   };
