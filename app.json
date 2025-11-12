@@ -19,7 +19,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.avCalerta.app",
       "statusBar": {
-        "hidden": false,
+        "hidden": true,
         "style": "dark"
       }
     },
@@ -34,10 +34,10 @@
         "backgroundColor": "transparent"
       },
       "statusBar": {
-        "hidden": false,
+        "hidden": true,
         "backgroundColor": "#ffffff",
         "style": "dark",
-        "translucent": false
+        "translucent": true
       },
       "softwareKeyboardLayoutMode": "pan"
     },

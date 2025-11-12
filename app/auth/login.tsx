@@ -5,13 +5,12 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  StatusBar,
-  SafeAreaView,
   Alert,
   ActivityIndicator,
   Image,
   BackHandler,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,6 +21,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Desativa o botão voltar do Android e oculta barra de navegação
   useFocusEffect(
@@ -70,9 +70,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#2196F3" />
-      
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <LinearGradient
         colors={['#2196F3', '#21CBF3']}
         style={styles.gradient}
@@ -116,14 +114,26 @@ export default function LoginScreen() {
 
           {/* Password Input */}
           <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="Insira sua senha..."
-              placeholderTextColor="#999"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="Insira sua senha..."
+                placeholderTextColor="#999"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+              />
+              <TouchableOpacity 
+                style={styles.eyeIcon}
+                onPress={() => setShowPassword(!showPassword)}
+              >
+                <Ionicons 
+                  name={showPassword ? "eye-off" : "eye"} 
+                  size={24} 
+                  color="#2196F3" 
+                />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Remember Me Checkbox */}
@@ -148,7 +158,7 @@ export default function LoginScreen() {
             {loading ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.loginButtonText}>LOGIN</Text>
+              <Text style={styles.loginButtonText}>ENTRAR</Text>
             )}
           </TouchableOpacity>
 
@@ -187,7 +197,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: 'Poppins_700Bold',
     color: '#000000',
   },
   logoContainer: {
@@ -214,15 +224,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
-    paddingHorizontal: 30,
+    paddingHorizontal: 40,
     paddingTop: 30,
+    justifyContent: 'center',
+    paddingBottom: 60,
   },
   formTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: 'Poppins_700Bold',
     color: '#2196F3',
     textAlign: 'center',
-    marginBottom: 30,
+    marginBottom: 40,
   },
   inputContainer: {
     marginBottom: 20,
@@ -234,7 +246,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 15,
     fontSize: 16,
+    fontFamily: 'Poppins_400Regular',
     backgroundColor: '#FFFFFF',
+  },
+  passwordContainer: {
+    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  passwordInput: {
+    flex: 1,
+    borderWidth: 2,
+    borderColor: '#2196F3',
+    borderRadius: 25,
+    paddingHorizontal: 20,
+    paddingRight: 55,
+    paddingVertical: 15,
+    fontSize: 16,
+    fontFamily: 'Poppins_400Regular',
+    backgroundColor: '#FFFFFF',
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 20,
   },
   checkboxContainer: {
     flexDirection: 'row',
@@ -256,6 +290,7 @@ const styles = StyleSheet.create({
   },
   checkboxText: {
     fontSize: 16,
+    fontFamily: 'Poppins_400Regular',
     color: '#000000',
   },
   loginButton: {
@@ -274,7 +309,7 @@ const styles = StyleSheet.create({
   },
   loginButtonText: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: 'Poppins_700Bold',
     color: '#FFFFFF',
     textAlign: 'center',
   },
@@ -284,6 +319,7 @@ const styles = StyleSheet.create({
   },
   linkText: {
     fontSize: 16,
+    fontFamily: 'Poppins_400Regular',
     color: '#000000',
     textDecorationLine: 'underline',
   },

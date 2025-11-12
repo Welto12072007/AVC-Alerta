@@ -5,10 +5,9 @@ import {
   StyleSheet,
   TouchableOpacity,
   Image,
-  StatusBar,
-  SafeAreaView,
   BackHandler,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as NavigationBar from 'expo-navigation-bar';
@@ -35,9 +34,7 @@ export default function WelcomeScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#2196F3" />
-      
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <LinearGradient
         colors={['#2196F3', '#21CBF3']}
         style={styles.gradient}
@@ -67,10 +64,10 @@ export default function WelcomeScreen() {
             style={styles.loginButton}
             onPress={() => router.push('/auth/login')}
           >
-            <Text style={styles.loginButtonText}>LOGIN</Text>
+            <Text style={styles.loginButtonText}>ENTRAR</Text>
           </TouchableOpacity>
           
-          <Text style={styles.loginSubtext}>faça login na sua conta.</Text>
+          <Text style={styles.loginSubtext}>entre na sua conta.</Text>
 
           <TouchableOpacity 
             style={styles.registerButton}
@@ -135,7 +132,7 @@ const styles = StyleSheet.create({
   },
   welcomeTitle: {
     fontSize: 34,
-    fontWeight: '900',
+    fontFamily: 'Poppins_700Bold',
     color: '#000000',
     textAlign: 'center',
   },
@@ -144,7 +141,8 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingHorizontal: 40,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
+    paddingTop: 20,
   },
   loginButton: {
     backgroundColor: '#FFFFFF',
@@ -160,12 +158,13 @@ const styles = StyleSheet.create({
   },
   loginButtonText: {
     fontSize: 18,
-    fontWeight: '600',
+    fontFamily: 'Poppins_600SemiBold',
     color: '#000000',
     textAlign: 'center',
   },
   loginSubtext: {
     fontSize: 14,
+    fontFamily: 'Poppins_400Regular',
     color: '#000000',
     marginBottom: 30,
     textAlign: 'center',
@@ -184,12 +183,13 @@ const styles = StyleSheet.create({
   },
   registerButtonText: {
     fontSize: 18,
-    fontWeight: '600',
+    fontFamily: 'Poppins_600SemiBold',
     color: '#000000',
     textAlign: 'center',
   },
   registerSubtext: {
     fontSize: 14,
+    fontFamily: 'Poppins_400Regular',
     color: '#000000',
     marginBottom: 30,
     textAlign: 'center',
@@ -209,19 +209,20 @@ const styles = StyleSheet.create({
   },
   googleButtonText: {
     fontSize: 18,
-    fontWeight: '600',
+    fontFamily: 'Poppins_600SemiBold',
     color: '#4285F4',
     marginRight: 10,
   },
   googleText: {
     fontSize: 16,
+    fontFamily: 'Poppins_400Regular',
     color: '#000000',
   },
   bottomDecoration: {
     position: 'absolute',
     bottom: 0,
     width: '100%',
-    height: 80,
+    height: 50,
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,

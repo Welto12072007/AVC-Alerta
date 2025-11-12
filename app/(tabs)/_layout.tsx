@@ -1,7 +1,10 @@
 import { Tabs } from 'expo-router';
 import { Heart, Chrome as Home, Info, Utensils, PhoneCall } from 'lucide-react-native';
+import { useSystemUI } from '@/hooks/useSystemUI';
 
 export default function TabLayout() {
+  useSystemUI(); // Aplica configurações de UI do sistema
+
   return (
     <Tabs
       screenOptions={{

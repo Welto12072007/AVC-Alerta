@@ -5,23 +5,24 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  StatusBar,
-  SafeAreaView,
   Alert,
   ActivityIndicator,
   Image,
   BackHandler,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as NavigationBar from 'expo-navigation-bar';
+import { authService } from '@/services/auth';
 
 export default function RegisterScreen() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Desativa o botão voltar do Android e oculta barra de navegação
   useFocusEffect(
@@ -48,29 +49,35 @@ export default function RegisterScreen() {
       return;
     }
 
-    if (password.length < 6) {
-      Alert.alert('Erro', 'A senha deve ter pelo menos 6 caracteres');
+    if (password.length < 8) {
+      Alert.alert('Erro', 'A senha deve ter pelo menos 8 caracteres');
       return;
     }
 
     setLoading(true);
     try {
-      // TODO: Implementar chamada para API de registro
-      console.log('Register attempt:', { fullName, email, password });
-      
-      // Simulação de registro por enquanto
-      setTimeout(() => {
-        setLoading(false);
+      const response = await authService.register({
+        email,
+        password,
+        fullName,
+      });
+
+      setLoading(false);
+
+      if (response.success) {
         Alert.alert('Sucesso', 'Conta criada com sucesso!', [
           {
             text: 'OK',
             onPress: () => router.replace('/auth/login'),
           },
         ]);
-      }, 2000);
+      } else {
+        Alert.alert('Erro', response.error || 'Falha no cadastro. Tente novamente.');
+      }
     } catch (error) {
       setLoading(false);
-      Alert.alert('Erro', 'Falha no cadastro. Tente novamente.');
+      Alert.alert('Erro', 'Erro de conexão com o servidor. Verifique se o backend está rodando.');
+      console.error('Erro no registro:', error);
     }
   };
 
@@ -79,9 +86,7 @@ export default function RegisterScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#2196F3" />
-      
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <LinearGradient
         colors={['#2196F3', '#21CBF3']}
         style={styles.gradient}
@@ -137,14 +142,34 @@ export default function RegisterScreen() {
 
           {/* Password Input */}
           <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="Insira sua senha..."
-              placeholderTextColor="#999"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="Insira sua senha..."
+                placeholderTextColor="#999"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+              />
+              <TouchableOpacity 
+                style={styles.eyeIcon}
+                onPress={() => setShowPassword(!showPassword)}
+              >
+                <Ionicons 
+                  name={showPassword ? "eye-off" : "eye"} 
+                  size={24} 
+                  color="#2196F3" 
+                />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.passwordRequirements}>
+              <Text style={styles.passwordHintTitle}>A senha deve conter:</Text>
+              <Text style={styles.passwordHint}>• No mínimo 8 caracteres</Text>
+              <Text style={styles.passwordHint}>• Pelo menos uma letra maiúscula</Text>
+              <Text style={styles.passwordHint}>• Pelo menos uma letra minúscula</Text>
+              <Text style={styles.passwordHint}>• Pelo menos um número</Text>
+              <Text style={styles.passwordHint}>• Pelo menos um caractere especial (!@#$...)</Text>
+            </View>
           </View>
 
           {/* Register Button */}
@@ -164,7 +189,7 @@ export default function RegisterScreen() {
           <View style={styles.linkContainer}>
             <Text style={styles.linkText}>Já tem uma conta? </Text>
             <TouchableOpacity onPress={() => router.push('/auth/login')}>
-              <Text style={[styles.linkText, styles.linkHighlight]}>Faça login</Text>
+              <Text style={[styles.linkText, styles.linkHighlight]}>Entrar</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -192,7 +217,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: 'Poppins_700Bold',
     color: '#000000',
   },
   logoContainer: {
@@ -219,15 +244,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
-    paddingHorizontal: 30,
+    paddingHorizontal: 40,
     paddingTop: 30,
+    justifyContent: 'center',
+    paddingBottom: 60,
   },
   formTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: 'Poppins_700Bold',
     color: '#2196F3',
     textAlign: 'center',
-    marginBottom: 30,
+    marginBottom: 40,
   },
   inputContainer: {
     marginBottom: 20,
@@ -239,7 +266,45 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 15,
     fontSize: 16,
+    fontFamily: 'Poppins_400Regular',
     backgroundColor: '#FFFFFF',
+  },
+  passwordContainer: {
+    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  passwordInput: {
+    flex: 1,
+    borderWidth: 2,
+    borderColor: '#2196F3',
+    borderRadius: 25,
+    paddingHorizontal: 20,
+    paddingRight: 55,
+    paddingVertical: 15,
+    fontSize: 16,
+    fontFamily: 'Poppins_400Regular',
+    backgroundColor: '#FFFFFF',
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 20,
+  },
+  passwordRequirements: {
+    marginTop: 8,
+    marginLeft: 20,
+  },
+  passwordHintTitle: {
+    fontSize: 12,
+    fontFamily: 'Poppins_600SemiBold',
+    color: '#2196F3',
+    marginBottom: 4,
+  },
+  passwordHint: {
+    fontSize: 11,
+    fontFamily: 'Poppins_400Regular',
+    color: '#666',
+    marginBottom: 2,
   },
   registerButton: {
     backgroundColor: '#2196F3',
@@ -258,7 +323,7 @@ const styles = StyleSheet.create({
   },
   registerButtonText: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: 'Poppins_700Bold',
     color: '#FFFFFF',
     textAlign: 'center',
   },
@@ -269,11 +334,12 @@ const styles = StyleSheet.create({
   },
   linkText: {
     fontSize: 16,
+    fontFamily: 'Poppins_400Regular',
     color: '#000000',
   },
   linkHighlight: {
     color: '#2196F3',
-    fontWeight: 'bold',
+    fontFamily: 'Poppins_700Bold',
     textDecorationLine: 'underline',
   },
 });

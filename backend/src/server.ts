@@ -2,6 +2,7 @@
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
+import path from 'path';
 import authRoutes from './routes/auth';
 import usersRoutes from './routes/users';
 import healthRoutes from './routes/health';
@@ -9,7 +10,8 @@ import symptomsRoutes from './routes/symptoms';
 import emergencyRoutes from './routes/emergency';
 import educationRoutes from './routes/education';
 
-dotenv.config();
+// Carrega o .env da raiz do projeto
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 const app = express();
 const PORT = process.env.PORT || 3000;

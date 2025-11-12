@@ -20,7 +20,7 @@ router.post('/register',
         return res.status(400).json({ error: 'Dados inválidos', details: errors.array() });
       }
 
-      const { email, password, fullName, phone, birthDate, gender } = req.body;
+      const { email, password, fullName, phone } = req.body;
 
       // Validar força da senha
       const passwordValidation = validatePasswordStrength(password);
@@ -31,10 +31,15 @@ router.post('/register',
       // Hash da senha
       const passwordHash = await hashPassword(password);
 
-      // Inserir usuário
+      // Inserir usuário - apenas os campos que existem na tabela
       const { data: user, error } = await supabase
         .from('users')
-        .insert([{ email, password_hash: passwordHash, full_name: fullName, phone, birth_date: birthDate, gender }])
+        .insert([{ 
+          email, 
+          password_hash: passwordHash, 
+          full_name: fullName,
+          ...(phone && { phone }) // Adiciona phone apenas se fornecido
+        }])
         .select()
         .single();
 
