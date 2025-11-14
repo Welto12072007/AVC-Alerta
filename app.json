@@ -4,7 +4,7 @@
     "slug": "avc-alerta",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/logo-removebg-preview.png",
+    "icon": "./assets/images/logo.jpg",
     "scheme": "myapp",
     "backgroundColor": "#2196F3",
     "userInterfaceStyle": "automatic",
@@ -29,7 +29,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/logo-removebg-preview.png",
+        "foregroundImage": "./assets/images/logo.jpg",
         "backgroundColor": "#2196F3"
       },
       "package": "com.avCalerta.app",
@@ -92,7 +92,9 @@
       "router": {},
       "eas": {
         "projectId": "4389f17c-1824-4bf9-bbec-e72f1a121453"
-      }
+      },
+      "supabaseUrl": "https://kgzgslacawjqfpqaopcv.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtnemdzbGFjYXdqcWZwcWFvcGN2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI0OTc4OTMsImV4cCI6MjA2ODA3Mzg5M30.5iKybZUN9sJL3HGM6f4UXo1CpoufkMfWSXBzL4FnpdA"
     }
   }
 }
