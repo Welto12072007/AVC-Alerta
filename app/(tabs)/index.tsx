@@ -114,19 +114,7 @@ export default function HomeScreen() {
         </Text>
       </View>
 
-      <View style={styles.imageContainer}>
-        <Image
-          source={{ uri: 'https://images.pexels.com/photos/7089401/pexels-photo-7089401.jpeg' }}
-          style={styles.infoImage}
-          resizeMode="cover"
-        />
-        <View style={styles.imageOverlay}>
-          <Text style={styles.imageTitle}>Prevenção é o melhor caminho</Text>
-          <Text style={styles.imageText}>
-            Manter hábitos saudáveis e conhecer os fatores de risco pode diminuir significativamente as chances de um AVC.
-          </Text>
-        </View>
-      </View>
+
     </ScrollView>
   );
 }
@@ -250,32 +238,5 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     flex: 1,
   },
-  imageContainer: {
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginBottom: 24,
-    height: 200,
-  },
-  infoImage: {
-    width: '100%',
-    height: '100%',
-  },
-  imageOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    padding: 16,
-  },
-  imageTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 4,
-  },
-  imageText: {
-    fontSize: 14,
-    color: '#FFFFFF',
-  },
+
 });

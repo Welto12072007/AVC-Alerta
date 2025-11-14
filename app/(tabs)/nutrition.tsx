@@ -241,7 +241,9 @@ export default function NutritionScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Guia Nutricional</Text>
+        <View style={styles.headerTitleContainer}>
+          <Text style={styles.headerTitle}>Guia Nutricional</Text>
+        </View>
         <View style={styles.headerActions}>
           <TouchableOpacity
             style={styles.headerButton}
@@ -328,6 +330,11 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: '#FFFFFF',
   },
+  headerTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',

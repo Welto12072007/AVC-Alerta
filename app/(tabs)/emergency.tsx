@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, TextInput, Linking, Alert, Modal, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, TextInput, Linking, Alert, Modal, ActivityIndicator, Image } from 'react-native';
 import { Phone, Plus, CreditCard as Edit2, Trash2, CircleAlert as AlertCircle, X } from 'lucide-react-native';
 import emergencyContactsService, { EmergencyContact } from '@/services/emergencyContacts';
 
@@ -525,6 +525,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+
   emergencyHeaderText: {
     color: '#FFFFFF',
     fontWeight: 'bold',

@@ -22,7 +22,9 @@ export default function InformationScreen() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>O que é AVC?</Text>
+        <View style={styles.headerTitleContainer}>
+          <Text style={styles.headerTitle}>O que é AVC?</Text>
+        </View>
         <Text style={styles.headerText}>
           O Acidente Vascular Cerebral (AVC) ocorre quando há interrupção do fluxo sanguíneo para o cérebro, 
           causando morte das células cerebrais por falta de oxigênio e nutrientes.
@@ -452,6 +454,12 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: 16,
   },
+  headerTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
