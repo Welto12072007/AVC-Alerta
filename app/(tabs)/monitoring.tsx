@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 import { Link } from 'expo-router';
-import { Heart, Activity, ArrowRight, ArrowLeft, Calendar, Thermometer, ChartBar as BarChart3 } from 'lucide-react-native';
+import { Heart, Activity, ArrowRight, ArrowLeft, Calendar, Thermometer, ChartBar as BarChart3, Bluetooth } from 'lucide-react-native';
+import { BluetoothTestButton } from '../../components/BluetoothTestButton';
+import { FotolaHealthData } from '../../services/fotolaProtocolParser';
 
 interface Reading {
   id: number;
@@ -54,27 +56,87 @@ export default function MonitoringScreen() {
     weight: '',
     notes: '',
   });
+  
+  // Dados do smartwatch em tempo real
+  const [liveSmartwatchData, setLiveSmartwatchData] = useState<FotolaHealthData | null>(null);
+  // Guardar último valor registrado para evitar duplicatas
+  const lastRegisteredValues = useRef<{
+    heartRate?: number;
+    bloodPressure?: { systolic: number; diastolic: number };
+  }>({});
+  
+  // Callback quando dados do smartwatch chegarem
+  const handleSmartwatchData = (data: FotolaHealthData) => {
+    console.log('📱 Dados recebidos na tela de monitoramento:', data);
+    setLiveSmartwatchData(data);
+    
+    // Só adicionar aos históricos se os valores mudaram (não duplicar)
+    const now = new Date();
+    let hasNewData = false;
+    
+    // Verificar se pressão arterial mudou
+    if (data.bloodPressure) {
+      const lastBP = lastRegisteredValues.current.bloodPressure;
+      const isNewBP = !lastBP || 
+        lastBP.systolic !== data.bloodPressure.systolic || 
+        lastBP.diastolic !== data.bloodPressure.diastolic;
+      
+      if (isNewBP) {
+        const newId = readings.bp.length > 0 ? Math.max(...readings.bp.map(r => r.id)) + 1 : 1;
+        const newBpReading: BPReading = {
+          id: newId,
+          date: now,
+          systolic: data.bloodPressure.systolic,
+          diastolic: data.bloodPressure.diastolic,
+          notes: 'Smartwatch Fotola S20',
+        };
+        setReadings(prev => ({
+          ...prev,
+          bp: [newBpReading, ...prev.bp],
+        }));
+        lastRegisteredValues.current.bloodPressure = data.bloodPressure;
+        hasNewData = true;
+        console.log('✅ Nova leitura de pressão registrada:', data.bloodPressure);
+      }
+    }
+    
+    // Verificar se batimento cardíaco mudou
+    if (data.heartRate) {
+      const lastHR = lastRegisteredValues.current.heartRate;
+      const isNewHR = !lastHR || lastHR !== data.heartRate;
+      
+      if (isNewHR) {
+        const newId = readings.heartRate.length > 0 ? Math.max(...readings.heartRate.map(r => r.id)) + 1 : 1;
+        const newHrReading: HeartRateReading = {
+          id: newId,
+          date: now,
+          value: data.heartRate,
+          notes: 'Smartwatch Fotola S20',
+        };
+        setReadings(prev => ({
+          ...prev,
+          heartRate: [newHrReading, ...prev.heartRate],
+        }));
+        lastRegisteredValues.current.heartRate = data.heartRate;
+        hasNewData = true;
+        console.log('✅ Nova leitura de BPM registrada:', data.heartRate);
+      }
+    }
+    
+    if (!hasNewData) {
+      console.log('ℹ️ Dados repetidos, não registrados');
+    }
+  };
 
-  // Simulated data
+  // Inicialização - apenas dados do smartwatch serão registrados
   useEffect(() => {
-    // In a real app, would load from storage
-    const mockData: Readings = {
-      bp: [
-        { id: 1, date: new Date(2023, 5, 1, 8, 30), systolic: 135, diastolic: 85, notes: 'Após medicação' },
-        { id: 2, date: new Date(2023, 5, 1, 20, 15), systolic: 140, diastolic: 88, notes: 'Antes de dormir' },
-        { id: 3, date: new Date(2023, 5, 2, 8, 45), systolic: 132, diastolic: 84, notes: 'Em jejum' },
-      ],
-      heartRate: [
-        { id: 1, date: new Date(2023, 5, 1, 8, 30), value: 72, notes: 'Em repouso' },
-        { id: 2, date: new Date(2023, 5, 1, 14, 15), value: 85, notes: 'Após caminhada' },
-        { id: 3, date: new Date(2023, 5, 2, 8, 45), value: 70, notes: 'Em jejum' },
-      ],
-      weight: [
-        { id: 1, date: new Date(2023, 5, 1, 8, 0), value: 78.5, notes: 'Em jejum' },
-        { id: 2, date: new Date(2023, 5, 8, 8, 0), value: 78.2, notes: 'Em jejum' },
-      ],
+    // Começa com dados vazios - histórico será preenchido apenas com medições do smartwatch
+    const emptyData: Readings = {
+      bp: [],
+      heartRate: [],
+      weight: [],
     };
-    setReadings(mockData);
+    setReadings(emptyData);
   }, []);
 
   const handleAddReading = () => {
@@ -420,6 +482,44 @@ export default function MonitoringScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Monitoramento de Saúde</Text>
       </View>
+
+      <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={true}>
+        {/* Smartwatch Connection */}
+        <View style={styles.smartwatchSection}>
+          <BluetoothTestButton onHealthDataReceived={handleSmartwatchData} />
+        
+        {/* Dados em tempo real */}
+        {liveSmartwatchData && (
+          <View style={styles.liveDataCard}>
+            <View style={styles.liveDataHeader}>
+              <Bluetooth size={16} color="#10B981" />
+              <Text style={styles.liveDataTitle}>Dados ao Vivo</Text>
+            </View>
+            <View style={styles.liveDataContent}>
+              {liveSmartwatchData.heartRate && (
+                <View style={styles.liveDataItem}>
+                  <Heart size={16} color="#EF4444" />
+                  <Text style={styles.liveDataValue}>{liveSmartwatchData.heartRate} bpm</Text>
+                </View>
+              )}
+              {liveSmartwatchData.bloodPressure && (
+                <View style={styles.liveDataItem}>
+                  <Activity size={16} color="#3B82F6" />
+                  <Text style={styles.liveDataValue}>
+                    {liveSmartwatchData.bloodPressure.systolic}/{liveSmartwatchData.bloodPressure.diastolic}
+                  </Text>
+                </View>
+              )}
+              {liveSmartwatchData.spo2 && (
+                <View style={styles.liveDataItem}>
+                  <Text style={styles.liveDataLabel}>SpO2:</Text>
+                  <Text style={styles.liveDataValue}>{liveSmartwatchData.spo2}%</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+      </View>
       
       <View style={styles.tabsContainer}>
         <TouchableOpacity
@@ -491,17 +591,11 @@ export default function MonitoringScreen() {
                   {readings[selectedTab === 'bp' ? 'bp' : selectedTab === 'heartRate' ? 'heartRate' : 'weight'].length} registros
                 </Text>
               </View>
-              <TouchableOpacity
-                style={styles.addButton}
-                onPress={() => setShowAddForm(true)}
-              >
-                <Text style={styles.addButtonText}>+ Adicionar</Text>
-              </TouchableOpacity>
             </View>
             
-            <ScrollView style={styles.readingsList}>
+            <View style={styles.readingsList}>
               {renderReadingsList()}
-            </ScrollView>
+            </View>
           </>
         ) : (
           <ScrollView style={styles.formContainer}>
@@ -571,6 +665,7 @@ export default function MonitoringScreen() {
           </View>
         </View>
       )}
+      </ScrollView>
     </View>
   );
 }
@@ -579,6 +674,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F1F5F9',
+  },
+  scrollContainer: {
+    flex: 1,
   },
   header: {
     padding: 16,
@@ -650,7 +748,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   readingsList: {
-    flex: 1,
     padding: 16,
     paddingTop: 0,
   },
@@ -898,5 +995,52 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#64748B',
     lineHeight: 20,
+  },
+  smartwatchSection: {
+    padding: 16,
+    backgroundColor: '#F8FAFC',
+  },
+  liveDataCard: {
+    backgroundColor: '#ECFDF5',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+  },
+  liveDataHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  liveDataTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#065F46',
+  },
+  liveDataContent: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  liveDataItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FFF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  liveDataLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#064E3B',
+  },
+  liveDataValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#065F46',
   },
 });
