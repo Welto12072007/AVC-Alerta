@@ -83,6 +83,13 @@ export default function MonitoringScreen() {
     bloodPressure?: { systolic: number; diastolic: number };
   }>({});
   
+  // Contador para garantir IDs únicos
+  const idCounter = useRef(0);
+  const generateUniqueId = () => {
+    idCounter.current += 1;
+    return Date.now() + idCounter.current;
+  };
+  
   // Salvar leitura de pressão arterial no Supabase
   const saveBPToDatabase = async (systolic: number, diastolic: number, notes: string) => {
     if (!userId) return;
@@ -188,7 +195,7 @@ export default function MonitoringScreen() {
 
     const now = new Date();
     const newWeightReading: WeightReading = {
-      id: Date.now(),
+      id: generateUniqueId(),
       date: now,
       value: weight,
       notes: newReading.notes,
@@ -221,7 +228,7 @@ export default function MonitoringScreen() {
 
     const now = new Date();
     const newSleepReading: SleepReading = {
-      id: Date.now(),
+      id: generateUniqueId(),
       date: now,
       hours: hours,
       quality: newReading.sleepQuality,
@@ -258,7 +265,7 @@ export default function MonitoringScreen() {
       
       if (isNewBP) {
         const newBpReading: BPReading = {
-          id: Date.now(),
+          id: generateUniqueId(),
           date: now,
           systolic: data.bloodPressure.systolic,
           diastolic: data.bloodPressure.diastolic,
@@ -288,7 +295,7 @@ export default function MonitoringScreen() {
       
       if (isNewHR) {
         const newHrReading: HeartRateReading = {
-          id: Date.now(),
+          id: generateUniqueId(),
           date: now,
           value: data.heartRate,
           notes: 'Smartwatch Fotola S20',
@@ -344,8 +351,8 @@ export default function MonitoringScreen() {
       if (bpError) {
         console.error('❌ Erro ao carregar pressão arterial:', bpError);
       } else {
-        const bpReadings: BPReading[] = (bpData || []).map(record => ({
-          id: parseInt(record.id) || Date.now(),
+        const bpReadings: BPReading[] = (bpData || []).map((record, index) => ({
+          id: new Date(record.timestamp).getTime() + index,
           date: new Date(record.timestamp),
           systolic: record.blood_pressure_systolic,
           diastolic: record.blood_pressure_diastolic,
@@ -367,8 +374,8 @@ export default function MonitoringScreen() {
       if (hrError) {
         console.error('❌ Erro ao carregar frequência cardíaca:', hrError);
       } else {
-        const hrReadings: HeartRateReading[] = (hrData || []).map(record => ({
-          id: parseInt(record.id) || Date.now(),
+        const hrReadings: HeartRateReading[] = (hrData || []).map((record, index) => ({
+          id: new Date(record.timestamp).getTime() + index,
           date: new Date(record.timestamp),
           value: record.heart_rate_bpm,
           notes: record.notes || ''
@@ -389,8 +396,8 @@ export default function MonitoringScreen() {
       if (weightError) {
         console.error('❌ Erro ao carregar peso:', weightError);
       } else {
-        const weightReadings: WeightReading[] = (weightData || []).map(record => ({
-          id: parseInt(record.id) || Date.now(),
+        const weightReadings: WeightReading[] = (weightData || []).map((record, index) => ({
+          id: new Date(record.timestamp).getTime() + index,
           date: new Date(record.timestamp),
           value: record.weight_kg,
           notes: record.notes || ''
@@ -411,7 +418,7 @@ export default function MonitoringScreen() {
       if (sleepError) {
         console.error('❌ Erro ao carregar sono:', sleepError);
       } else {
-        const sleepReadings: SleepReading[] = (sleepData || []).map(record => {
+        const sleepReadings: SleepReading[] = (sleepData || []).map((record, index) => {
           // Converter score numérico de volta para qualidade textual
           let quality: 'poor' | 'fair' | 'good' | 'excellent' = 'good';
           if (record.sleep_quality_score) {
@@ -422,7 +429,7 @@ export default function MonitoringScreen() {
           }
           
           return {
-            id: parseInt(record.id) || Date.now(),
+            id: new Date(record.timestamp).getTime() + index,
             date: new Date(record.timestamp),
             hours: record.sleep_duration_hours || 0,
             quality: quality,
@@ -453,7 +460,7 @@ export default function MonitoringScreen() {
       const diastolic = parseInt(newReading.diastolic);
       
       const newBpReading: BPReading = {
-        id: Date.now(),
+        id: generateUniqueId(),
         date: now,
         systolic: systolic,
         diastolic: diastolic,
@@ -476,7 +483,7 @@ export default function MonitoringScreen() {
       const bpm = parseInt(newReading.heartRate);
       
       const newHrReading: HeartRateReading = {
-        id: Date.now(),
+        id: generateUniqueId(),
         date: now,
         value: bpm,
         notes: newReading.notes,

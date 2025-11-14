@@ -246,6 +246,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Poppins_400Regular',
     backgroundColor: '#FFFFFF',
+    color: '#333333',
   },
   passwordContainer: {
     position: 'relative',
@@ -263,6 +264,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Poppins_400Regular',
     backgroundColor: '#FFFFFF',
+    color: '#333333',
   },
   eyeIcon: {
     position: 'absolute',
