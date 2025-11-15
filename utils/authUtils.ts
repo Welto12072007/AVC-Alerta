@@ -6,14 +6,14 @@ import { supabase } from '@/config/supabase';
  */
 export const getAuthenticatedUserId = async (): Promise<string | null> => {
   try {
-    const { data: { user }, error } = await supabase.auth.getUser();
+    // Usar getSession ao invés de getUser para não lançar erro quando não autenticado
+    const { data: { session }, error } = await supabase.auth.getSession();
     
-    if (error || !user) {
-      console.error('Usuário não autenticado:', error);
+    if (error || !session?.user) {
       return null;
     }
     
-    return user.id;
+    return session.user.id;
   } catch (error) {
     console.error('Erro ao verificar autenticação:', error);
     return null;
@@ -25,11 +25,15 @@ export const getAuthenticatedUserId = async (): Promise<string | null> => {
  * @throws Error se não autenticado
  */
 export const requireAuth = async (): Promise<string> => {
-  const userId = await getAuthenticatedUserId();
-  
-  if (!userId) {
+  try {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    
+    if (error || !session?.user) {
+      throw new Error('Usuário não autenticado');
+    }
+    
+    return session.user.id;
+  } catch (error) {
     throw new Error('Usuário não autenticado');
   }
-  
-  return userId;
 };

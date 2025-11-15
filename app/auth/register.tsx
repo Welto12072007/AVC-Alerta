@@ -105,8 +105,8 @@ export default function RegisterScreen() {
 
         {/* Logo */}
         <View style={styles.logoContainer}>
-          <Image 
-            source={require('@/assets/images/logo-removebg-preview.png')} 
+            <Image
+              source={require('@/assets/images/LogoSemFundo-removebg-preview.png')}
             style={styles.logoImage}
             resizeMode="contain"
           />

@@ -4,14 +4,14 @@
     "slug": "avc-alerta",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/logo-removebg-preview.png",
+    "icon": "./assets/images/Cópia de AVC Alerta.png",
     "scheme": "myapp",
     "backgroundColor": "#2196F3",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "sdkVersion": "54.0.0",
     "splash": {
-      "image": "./assets/images/logo-removebg-preview.png",
+      "image": "./assets/images/LogoSemFundo-removebg-preview.png",
       "resizeMode": "contain",
       "backgroundColor": "#2196F3"
     },
@@ -29,7 +29,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/logo-removebg-preview.png",
+        "foregroundImage": "./assets/images/Cópia de AVC Alerta.png",
         "backgroundColor": "#FFFFFF"
       },
       "package": "com.avCalerta.app",

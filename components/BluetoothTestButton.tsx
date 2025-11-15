@@ -27,6 +27,8 @@ export const BluetoothTestButton = ({ onHealthDataReceived }: BluetoothTestButto
   const [latestData, setLatestData] = useState<FotolaHealthData | null>(null);
   const [isMonitoring, setIsMonitoring] = useState(false);
   const shouldProcessData = useRef(true); // Controle de processamento usando ref
+  const baselineData = useRef<FotolaHealthData | null>(null); // Dados iniciais (cache) para comparar
+  const hasReceivedBaseline = useRef(false); // Se já recebeu dados iniciais
 
   const handleScan = async () => {
     try {
@@ -111,8 +113,10 @@ export const BluetoothTestButton = ({ onHealthDataReceived }: BluetoothTestButto
         console.log('✅ CONECTADO COM SUCESSO!');
         setIsMonitoring(true);
         shouldProcessData.current = true;
+        hasReceivedBaseline.current = false;
+        baselineData.current = null;
         
-        // Iniciar monitoramento automático e parsear dados
+        // Iniciar monitoramento
         bluetoothService.monitorFotolaData((rawData) => {
           // Se flag desativada, retornar imediatamente (economia de processamento)
           if (!shouldProcessData.current) {
@@ -125,13 +129,41 @@ export const BluetoothTestButton = ({ onHealthDataReceived }: BluetoothTestButto
           // APENAS enviar se retornou dados válidos (não null)
           // Durante medição, parse() retorna null até terminar
           if (parsedData && FotolaProtocolParser.isValid(parsedData)) {
-            console.log('✅ DADOS DE SAÚDE EXTRAÍDOS (enviando para tela):', parsedData);
+            
+            // PRIMEIRA VEZ: salvar como baseline (dados em cache do smartwatch)
+            if (!hasReceivedBaseline.current) {
+              baselineData.current = parsedData;
+              hasReceivedBaseline.current = true;
+              console.log('📋 Baseline capturado (cache do smartwatch):', parsedData);
+              console.log('⏳ Aguardando medição ATIVA no smartwatch...');
+              return; // NÃO registrar dados iniciais
+            }
+            
+            // SEGUNDA VEZ EM DIANTE: verificar se valores mudaram (nova medição)
+            const baseline = baselineData.current!;
+            const hasChanged = (
+              (parsedData.heartRate && parsedData.heartRate !== baseline.heartRate) ||
+              (parsedData.systolic && parsedData.systolic !== baseline.systolic) ||
+              (parsedData.diastolic && parsedData.diastolic !== baseline.diastolic) ||
+              (parsedData.spo2 && parsedData.spo2 !== baseline.spo2)
+            );
+            
+            if (!hasChanged) {
+              console.log('⏭️ Dados idênticos ao baseline (ignorando)');
+              return;
+            }
+            
+            // DADOS MUDARAM = NOVA MEDIÇÃO ATIVA!
+            console.log('✅ NOVA MEDIÇÃO DETECTADA (valores diferentes do baseline):', parsedData);
             setLatestData(parsedData);
             
             // Enviar para tela de monitoramento
             if (onHealthDataReceived) {
               onHealthDataReceived(parsedData);
             }
+            
+            // Atualizar baseline para próxima comparação
+            baselineData.current = parsedData;
             
             // DESATIVAR processamento após registrar (economiza recursos)
             shouldProcessData.current = false;
@@ -164,6 +196,8 @@ export const BluetoothTestButton = ({ onHealthDataReceived }: BluetoothTestButto
 
   const handleDisconnect = async () => {
     shouldProcessData.current = false; // Parar processamento
+    hasReceivedBaseline.current = false; // Reset baseline
+    baselineData.current = null;
     await bluetoothService.disconnect();
     setIsConnected(false);
     setConnectedDevice(null);
@@ -182,8 +216,9 @@ export const BluetoothTestButton = ({ onHealthDataReceived }: BluetoothTestButto
           <View style={styles.connectedBadge}>
             <Text style={styles.connectedIcon}>✅</Text>
             <View>
-              <Text style={styles.connectedLabel}>Conectado e Monitorando</Text>
+              <Text style={styles.connectedLabel}>Conectado</Text>
               <Text style={styles.connectedDevice}>{connectedDevice}</Text>
+              <Text style={styles.connectedHint}>Faça uma medição no smartwatch</Text>
             </View>
           </View>
           
@@ -291,6 +326,11 @@ const styles = StyleSheet.create({
     color: '#064E3B',
     fontWeight: '700',
     marginTop: 2,
+  },
+  connectedHint: {
+    fontSize: 12,
+    color: '#059669',
+    marginTop: 4,
   },
   disconnectButton: {
     backgroundColor: '#EF4444',

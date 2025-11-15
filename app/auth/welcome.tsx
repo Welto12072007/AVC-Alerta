@@ -39,9 +39,9 @@ export default function WelcomeScreen() {
         {/* Logo e Título */}
         <View style={styles.logoContainer}>
           <View style={styles.logoWrapper}>
-            <Image 
-              source={require('@/assets/images/logo-removebg-preview.png')} 
-              style={styles.logoImage}
+              <Image 
+                source={require('@/assets/images/LogoSemFundo-removebg-preview.png')} 
+                style={styles.logoImage}
               resizeMode="contain"
             />
             <Text style={styles.logoText}>

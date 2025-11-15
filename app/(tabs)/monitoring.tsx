@@ -46,7 +46,6 @@ interface NewReading {
   weight: string;
   sleepHours: string;
   sleepQuality: 'poor' | 'fair' | 'good' | 'excellent';
-  spo2: string;
   notes: string;
 }
 
@@ -80,7 +79,6 @@ export default function MonitoringScreen() {
     weight: '',
     sleepHours: '',
     sleepQuality: 'good',
-    spo2: '',
     notes: '',
   });
   const [loading, setLoading] = useState(true);
@@ -458,62 +456,9 @@ export default function MonitoringScreen() {
     }
   };
 
-  // Callback para BPM dedicado (modo de alta precisão)
-  const handleDedicatedBPM = async (bpm: number, confidence?: number) => {
-    console.log(`💓 BPM DEDICADO recebido: ${bpm} bpm (Confiança: ${confidence || 100}%)`);
-    
-    const lastHR = lastRegisteredValues.current.heartRate;
-    const isNewHR = !lastHR || lastHR !== bpm;
-    
-    if (isNewHR) {
-      const now = new Date();
-      
-      // Salvar no banco de dados
-      const dbId = await saveHeartRateToDatabase(bpm, `BPM Dedicado - Confiança: ${confidence || 100}%`);
-      
-      // Adicionar à lista de leituras
-      const newHrReading: HeartRateReading = {
-        id: generateUniqueId(),
-        dbId: dbId || undefined,
-        date: now,
-        value: bpm,
-        notes: `BPM Dedicado - Confiança: ${confidence || 100}%`,
-      };
-      
-      setReadings(prev => ({
-        ...prev,
-        heartRate: [newHrReading, ...prev.heartRate],
-      }));
-      
-      lastRegisteredValues.current.heartRate = bpm;
-      console.log('✅ BPM dedicado registrado na tela e banco de dados');
-    } else {
-      console.log('ℹ️ BPM dedicado duplicado, não registrado');
-    }
-  };
-
   // Carregar dados do usuário do Supabase
   useEffect(() => {
     loadUserData();
-  }, []);
-
-  // Inicializar monitoramento de BPM dedicado quando conectar
-  useEffect(() => {
-    const setupDedicatedBPM = async () => {
-      if (bluetoothService.isConnected()) {
-        try {
-          console.log('🔄 Iniciando monitoramento de BPM dedicado...');
-          await bluetoothService.monitorDedicatedBPM(async (data) => {
-            await handleDedicatedBPM(data.bpm, data.confidence);
-          });
-          console.log('✅ Monitoramento BPM dedicado ativo na tela de monitoramento');
-        } catch (error) {
-          console.log('ℹ️ BPM dedicado não disponível, usando modo padrão:', error);
-        }
-      }
-    };
-
-    setupDedicatedBPM();
   }, []);
   
   const loadUserData = async () => {
@@ -1305,14 +1250,16 @@ export default function MonitoringScreen() {
                           : readings.spo2.length} registros
                 </Text>
               </View>
-              {(selectedTab === 'weight' || selectedTab === 'sleep') && (
+              {(selectedTab === 'weight' || selectedTab === 'sleep' || selectedTab === 'bp' || selectedTab === 'heartRate') && (
                 <TouchableOpacity
                   style={styles.addButton}
                   onPress={() => {
                     if (selectedTab === 'weight') {
                       setShowWeightModal(true);
-                    } else {
+                    } else if (selectedTab === 'sleep') {
                       setShowSleepModal(true);
+                    } else {
+                      setShowAddForm(true);
                     }
                   }}
                 >
