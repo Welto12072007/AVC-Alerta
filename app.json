@@ -4,7 +4,7 @@
     "slug": "avc-alerta",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/logo.jpg",
+    "icon": "./assets/images/logo-removebg-preview.png",
     "scheme": "myapp",
     "backgroundColor": "#2196F3",
     "userInterfaceStyle": "automatic",
@@ -29,8 +29,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/logo.jpg",
-        "backgroundColor": "#2196F3"
+        "foregroundImage": "./assets/images/logo-removebg-preview.png",
+        "backgroundColor": "#FFFFFF"
       },
       "package": "com.avCalerta.app",
       "permissions": [
@@ -55,7 +55,7 @@
         "style": "dark",
         "translucent": true
       },
-      "softwareKeyboardLayoutMode": "pan"
+      "softwareKeyboardLayoutMode": "resize"
     },
     "web": {
       "bundler": "metro",

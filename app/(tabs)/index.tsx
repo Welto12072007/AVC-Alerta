@@ -32,7 +32,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       {showWelcome && (
         <View style={styles.welcomeCard}>
           <Text style={styles.welcomeTitle}>Bem-vindo ao AVC Alerta</Text>
@@ -123,6 +123,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F1F5F9',
+  },
+  contentContainer: {
     padding: 16,
   },
   welcomeCard: {

@@ -239,7 +239,7 @@ export default function NutritionScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <View style={styles.header}>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>Guia Nutricional</Text>
@@ -305,7 +305,7 @@ export default function NutritionScreen() {
         </Text>
       </View>
 
-      <ScrollView style={styles.foodsList} showsVerticalScrollIndicator={false}>
+      <View style={styles.foodsList}>
         {filteredFoods.length === 0 ? (
           <View style={styles.noResultsContainer}>
             <Text style={styles.noResultsText}>Nenhum alimento encontrado</Text>
@@ -313,8 +313,8 @@ export default function NutritionScreen() {
         ) : (
           filteredFoods.map(renderFoodCard)
         )}
-      </ScrollView>
-    </View>
+      </View>
+    </ScrollView>
   );
 }
 
@@ -322,6 +322,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F1F5F9',
+  },
+  contentContainer: {
+    paddingBottom: 16,
   },
   header: {
     flexDirection: 'row',

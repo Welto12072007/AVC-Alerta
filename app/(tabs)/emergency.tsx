@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, TextInput, Linking, Alert, Modal, ActivityIndicator, Image } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Phone, Plus, CreditCard as Edit2, Trash2, CircleAlert as AlertCircle, X } from 'lucide-react-native';
 import emergencyContactsService, { EmergencyContact } from '@/services/emergencyContacts';
 
@@ -367,7 +368,14 @@ export default function EmergencyScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+            <KeyboardAwareScrollView
+              style={styles.modalBody}
+              showsVerticalScrollIndicator={false}
+              enableOnAndroid={true}
+              enableAutomaticScroll={true}
+              extraScrollHeight={20}
+              keyboardShouldPersistTaps="handled"
+            >
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Nome *</Text>
                 <TextInput
@@ -439,7 +447,7 @@ export default function EmergencyScreen() {
                   </TouchableOpacity>
                 </View>
               </View>
-            </ScrollView>
+            </KeyboardAwareScrollView>
 
             <View style={styles.modalFooter}>
               <TouchableOpacity

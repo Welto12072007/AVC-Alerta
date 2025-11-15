@@ -10,6 +10,7 @@ import {
   Image,
   BackHandler,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -91,6 +92,14 @@ export default function RegisterScreen() {
         colors={['#2196F3', '#21CBF3']}
         style={styles.gradient}
       >
+        <KeyboardAwareScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          enableOnAndroid={true}
+          enableAutomaticScroll={true}
+          extraScrollHeight={20}
+          keyboardShouldPersistTaps="handled"
+        >
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={goBack}>
@@ -193,6 +202,7 @@ export default function RegisterScreen() {
             </TouchableOpacity>
           </View>
         </View>
+        </KeyboardAwareScrollView>
       </LinearGradient>
     </SafeAreaView>
   );
@@ -204,6 +214,9 @@ const styles = StyleSheet.create({
   },
   gradient: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   header: {
     flexDirection: 'row',

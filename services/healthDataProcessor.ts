@@ -59,10 +59,15 @@ class HealthDataProcessor {
       category = BloodPressureCategory.NORMAL;
       status = HealthStatus.NORMAL;
     }
-    // Pressão Elevada
-    else if (systolic >= 120 && systolic < 130 && diastolic < 80) {
-      category = BloodPressureCategory.ELEVATED;
-      status = HealthStatus.WARNING;
+    // Crise Hipertensiva (verificar primeiro - mais grave)
+    else if (systolic >= 180 || diastolic >= 120) {
+      category = BloodPressureCategory.HYPERTENSIVE_CRISIS;
+      status = HealthStatus.CRITICAL;
+    }
+    // Hipertensão Estágio 2
+    else if (systolic >= 140 || diastolic >= 90) {
+      category = BloodPressureCategory.HYPERTENSION_STAGE_2;
+      status = HealthStatus.ALERT;
     }
     // Hipertensão Estágio 1
     else if (
@@ -72,15 +77,10 @@ class HealthDataProcessor {
       category = BloodPressureCategory.HYPERTENSION_STAGE_1;
       status = HealthStatus.WARNING;
     }
-    // Hipertensão Estágio 2
-    else if (systolic >= 140 || diastolic >= 90) {
-      category = BloodPressureCategory.HYPERTENSION_STAGE_2;
-      status = HealthStatus.ALERT;
-    }
-    // Crise Hipertensiva
-    else if (systolic >= 180 || diastolic >= 120) {
-      category = BloodPressureCategory.HYPERTENSIVE_CRISIS;
-      status = HealthStatus.CRITICAL;
+    // Pressão Elevada
+    else if (systolic >= 120 && systolic < 130 && diastolic < 80) {
+      category = BloodPressureCategory.ELEVATED;
+      status = HealthStatus.WARNING;
     }
     // Fallback
     else {

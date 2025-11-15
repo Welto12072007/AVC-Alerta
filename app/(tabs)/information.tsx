@@ -20,7 +20,7 @@ export default function InformationScreen() {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <View style={styles.header}>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>O que é AVC?</Text>
@@ -449,6 +449,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F1F5F9',
+  },
+  contentContainer: {
     padding: 16,
   },
   header: {

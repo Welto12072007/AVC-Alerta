@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator, Modal } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Link } from 'expo-router';
-import { Heart, Activity, ArrowRight, ArrowLeft, Calendar, Thermometer, ChartBar as BarChart3, Bluetooth, X, Moon, Weight as WeightIcon } from 'lucide-react-native';
+import { Heart, Activity, ArrowRight, ArrowLeft, Calendar, Thermometer, ChartBar as BarChart3, Bluetooth, X, Moon, Weight as WeightIcon, Trash2 } from 'lucide-react-native';
 import { BluetoothTestButton } from '../../components/BluetoothTestButton';
 import { FotolaHealthData } from '../../services/fotolaProtocolParser';
 import { supabase } from '../../config/supabase';
@@ -10,6 +11,7 @@ import { HealthMetricType } from '../../types/health';
 
 interface Reading {
   id: number;
+  dbId?: string; // UUID do banco de dados
   date: Date;
   notes?: string;
 }
@@ -91,13 +93,13 @@ export default function MonitoringScreen() {
   };
   
   // Salvar leitura de pressão arterial no Supabase
-  const saveBPToDatabase = async (systolic: number, diastolic: number, notes: string) => {
-    if (!userId) return;
+  const saveBPToDatabase = async (systolic: number, diastolic: number, notes: string): Promise<string | null> => {
+    if (!userId) return null;
     
     try {
       const bpReading = healthDataProcessor.analyzeBloodPressure(systolic, diastolic, notes);
       
-      const { error } = await supabase.from('health_readings').insert([{
+      const { data, error } = await supabase.from('health_readings').insert([{
         user_id: userId,
         metric_type: HealthMetricType.BLOOD_PRESSURE,
         blood_pressure_systolic: systolic,
@@ -106,23 +108,25 @@ export default function MonitoringScreen() {
         status: bpReading.status,
         timestamp: new Date().toISOString(),
         notes: notes
-      }]);
+      }]).select('id').single();
       
       if (error) throw error;
       console.log('✅ Pressão arterial salva no banco');
+      return data?.id || null;
     } catch (error) {
       console.error('❌ Erro ao salvar pressão arterial:', error);
+      return null;
     }
   };
   
   // Salvar leitura de frequência cardíaca no Supabase
-  const saveHeartRateToDatabase = async (bpm: number, notes: string) => {
-    if (!userId) return;
+  const saveHeartRateToDatabase = async (bpm: number, notes: string): Promise<string | null> => {
+    if (!userId) return null;
     
     try {
       const hrReading = healthDataProcessor.analyzeHeartRate(bpm, notes);
       
-      const { error } = await supabase.from('health_readings').insert([{
+      const { data, error } = await supabase.from('health_readings').insert([{
         user_id: userId,
         metric_type: HealthMetricType.HEART_RATE,
         heart_rate_bpm: bpm,
@@ -130,53 +134,59 @@ export default function MonitoringScreen() {
         status: hrReading.status,
         timestamp: new Date().toISOString(),
         notes: notes
-      }]);
+      }]).select('id').single();
       
       if (error) throw error;
       console.log('✅ Frequência cardíaca salva no banco');
+      return data?.id || null;
     } catch (error) {
       console.error('❌ Erro ao salvar frequência cardíaca:', error);
+      return null;
     }
   };
 
   // Salvar leitura de peso no Supabase
-  const saveWeightToDatabase = async (weight: number, notes: string) => {
-    if (!userId) return;
+  const saveWeightToDatabase = async (weight: number, notes: string): Promise<string | null> => {
+    if (!userId) return null;
     
     try {
-      const { error } = await supabase.from('health_readings').insert([{
+      const { data, error } = await supabase.from('health_readings').insert([{
         user_id: userId,
         metric_type: HealthMetricType.WEIGHT,
         weight_kg: weight,
         timestamp: new Date().toISOString(),
         notes: notes
-      }]);
+      }]).select('id').single();
       
       if (error) throw error;
       console.log('✅ Peso salvo no banco');
+      return data?.id || null;
     } catch (error) {
       console.error('❌ Erro ao salvar peso:', error);
+      return null;
     }
   };
 
   // Salvar leitura de sono no Supabase
-  const saveSleepToDatabase = async (hours: number, quality: string, notes: string) => {
-    if (!userId) return;
+  const saveSleepToDatabase = async (hours: number, quality: string, notes: string): Promise<string | null> => {
+    if (!userId) return null;
     
     try {
-      const { error } = await supabase.from('health_readings').insert([{
+      const { data, error } = await supabase.from('health_readings').insert([{
         user_id: userId,
         metric_type: HealthMetricType.SLEEP,
         sleep_duration_hours: hours,
         sleep_quality_score: quality === 'excellent' ? 4 : quality === 'good' ? 3 : quality === 'fair' ? 2 : 1,
         timestamp: new Date().toISOString(),
         notes: notes
-      }]);
+      }]).select('id').single();
       
       if (error) throw error;
       console.log('✅ Sono salvo no banco');
+      return data?.id || null;
     } catch (error) {
       console.error('❌ Erro ao salvar sono:', error);
+      return null;
     }
   };
 
@@ -194,8 +204,11 @@ export default function MonitoringScreen() {
     }
 
     const now = new Date();
+    const dbId = await saveWeightToDatabase(weight, newReading.notes || 'Medição manual');
+    
     const newWeightReading: WeightReading = {
       id: generateUniqueId(),
+      dbId: dbId || undefined,
       date: now,
       value: weight,
       notes: newReading.notes,
@@ -205,8 +218,6 @@ export default function MonitoringScreen() {
       ...prev,
       weight: [newWeightReading, ...prev.weight],
     }));
-
-    await saveWeightToDatabase(weight, newReading.notes || 'Medição manual');
     
     Alert.alert('Sucesso', 'Peso registrado com sucesso!');
     setNewReading(prev => ({ ...prev, weight: '', notes: '' }));
@@ -227,8 +238,11 @@ export default function MonitoringScreen() {
     }
 
     const now = new Date();
+    const dbId = await saveSleepToDatabase(hours, newReading.sleepQuality, newReading.notes || 'Registro manual');
+    
     const newSleepReading: SleepReading = {
       id: generateUniqueId(),
+      dbId: dbId || undefined,
       date: now,
       hours: hours,
       quality: newReading.sleepQuality,
@@ -239,12 +253,71 @@ export default function MonitoringScreen() {
       ...prev,
       sleep: [newSleepReading, ...prev.sleep],
     }));
-
-    await saveSleepToDatabase(hours, newReading.sleepQuality, newReading.notes || 'Registro manual');
     
     Alert.alert('Sucesso', 'Sono registrado com sucesso!');
     setNewReading(prev => ({ ...prev, sleepHours: '', sleepQuality: 'good', notes: '' }));
     setShowSleepModal(false);
+  };
+
+  // Funções de deletar registros
+  const handleDeleteReading = async (id: number, type: TabType) => {
+    Alert.alert(
+      'Confirmar exclusão',
+      'Tem certeza que deseja excluir este registro?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Encontrar o reading para pegar o dbId
+              let dbId: string | undefined;
+              
+              if (type === 'bp') {
+                const reading = readings.bp.find(r => r.id === id);
+                dbId = reading?.dbId;
+                setReadings(prev => ({ ...prev, bp: prev.bp.filter(r => r.id !== id) }));
+              } else if (type === 'heartRate') {
+                const reading = readings.heartRate.find(r => r.id === id);
+                dbId = reading?.dbId;
+                setReadings(prev => ({ ...prev, heartRate: prev.heartRate.filter(r => r.id !== id) }));
+              } else if (type === 'weight') {
+                const reading = readings.weight.find(r => r.id === id);
+                dbId = reading?.dbId;
+                setReadings(prev => ({ ...prev, weight: prev.weight.filter(r => r.id !== id) }));
+              } else if (type === 'sleep') {
+                const reading = readings.sleep.find(r => r.id === id);
+                dbId = reading?.dbId;
+                setReadings(prev => ({ ...prev, sleep: prev.sleep.filter(r => r.id !== id) }));
+              }
+              
+              // Deletar do banco de dados se houver dbId
+              if (dbId) {
+                const { error } = await supabase
+                  .from('health_readings')
+                  .delete()
+                  .eq('id', dbId);
+                
+                if (error) {
+                  console.error('❌ Erro ao deletar do banco:', error);
+                  Alert.alert('Aviso', 'Registro removido localmente, mas houve um erro ao remover do banco de dados');
+                  return;
+                }
+                console.log('✅ Registro deletado do banco de dados');
+              } else {
+                console.log('ℹ️ Registro sem ID do banco, deletado apenas localmente');
+              }
+              
+              Alert.alert('Sucesso', 'Registro excluído com sucesso!');
+            } catch (error) {
+              console.error('❌ Erro ao excluir registro:', error);
+              Alert.alert('Erro', 'Não foi possível excluir o registro');
+            }
+          },
+        },
+      ]
+    );
   };
 
   // Callback quando dados do smartwatch chegarem
@@ -264,8 +337,16 @@ export default function MonitoringScreen() {
         lastBP.diastolic !== data.bloodPressure.diastolic;
       
       if (isNewBP) {
+        // Salvar no banco de dados primeiro
+        const dbId = await saveBPToDatabase(
+          data.bloodPressure.systolic,
+          data.bloodPressure.diastolic,
+          'Smartwatch Fotola S20'
+        );
+        
         const newBpReading: BPReading = {
           id: generateUniqueId(),
+          dbId: dbId || undefined,
           date: now,
           systolic: data.bloodPressure.systolic,
           diastolic: data.bloodPressure.diastolic,
@@ -278,13 +359,6 @@ export default function MonitoringScreen() {
         lastRegisteredValues.current.bloodPressure = data.bloodPressure;
         hasNewData = true;
         console.log('✅ Nova leitura de pressão registrada:', data.bloodPressure);
-        
-        // Salvar no banco de dados
-        await saveBPToDatabase(
-          data.bloodPressure.systolic,
-          data.bloodPressure.diastolic,
-          'Smartwatch Fotola S20'
-        );
       }
     }
     
@@ -294,8 +368,12 @@ export default function MonitoringScreen() {
       const isNewHR = !lastHR || lastHR !== data.heartRate;
       
       if (isNewHR) {
+        // Salvar no banco de dados primeiro
+        const dbId = await saveHeartRateToDatabase(data.heartRate, 'Smartwatch Fotola S20');
+        
         const newHrReading: HeartRateReading = {
           id: generateUniqueId(),
+          dbId: dbId || undefined,
           date: now,
           value: data.heartRate,
           notes: 'Smartwatch Fotola S20',
@@ -307,9 +385,6 @@ export default function MonitoringScreen() {
         lastRegisteredValues.current.heartRate = data.heartRate;
         hasNewData = true;
         console.log('✅ Nova leitura de BPM registrada:', data.heartRate);
-        
-        // Salvar no banco de dados
-        await saveHeartRateToDatabase(data.heartRate, 'Smartwatch Fotola S20');
       }
     }
     
@@ -353,6 +428,7 @@ export default function MonitoringScreen() {
       } else {
         const bpReadings: BPReading[] = (bpData || []).map((record, index) => ({
           id: new Date(record.timestamp).getTime() + index,
+          dbId: record.id,
           date: new Date(record.timestamp),
           systolic: record.blood_pressure_systolic,
           diastolic: record.blood_pressure_diastolic,
@@ -376,6 +452,7 @@ export default function MonitoringScreen() {
       } else {
         const hrReadings: HeartRateReading[] = (hrData || []).map((record, index) => ({
           id: new Date(record.timestamp).getTime() + index,
+          dbId: record.id,
           date: new Date(record.timestamp),
           value: record.heart_rate_bpm,
           notes: record.notes || ''
@@ -398,6 +475,7 @@ export default function MonitoringScreen() {
       } else {
         const weightReadings: WeightReading[] = (weightData || []).map((record, index) => ({
           id: new Date(record.timestamp).getTime() + index,
+          dbId: record.id,
           date: new Date(record.timestamp),
           value: record.weight_kg,
           notes: record.notes || ''
@@ -430,6 +508,7 @@ export default function MonitoringScreen() {
           
           return {
             id: new Date(record.timestamp).getTime() + index,
+            dbId: record.id,
             date: new Date(record.timestamp),
             hours: record.sleep_duration_hours || 0,
             quality: quality,
@@ -459,8 +538,12 @@ export default function MonitoringScreen() {
       const systolic = parseInt(newReading.systolic);
       const diastolic = parseInt(newReading.diastolic);
       
+      // Salvar no banco de dados primeiro
+      const dbId = await saveBPToDatabase(systolic, diastolic, newReading.notes || 'Medição manual');
+      
       const newBpReading: BPReading = {
         id: generateUniqueId(),
+        dbId: dbId || undefined,
         date: now,
         systolic: systolic,
         diastolic: diastolic,
@@ -471,9 +554,6 @@ export default function MonitoringScreen() {
         ...readings,
         bp: [newBpReading, ...readings.bp],
       });
-      
-      // Salvar no banco de dados
-      await saveBPToDatabase(systolic, diastolic, newReading.notes || 'Medição manual');
     } else if (selectedTab === 'heartRate') {
       if (!newReading.heartRate) {
         Alert.alert('Erro', 'Por favor, preencha o valor da frequência cardíaca');
@@ -482,8 +562,12 @@ export default function MonitoringScreen() {
       
       const bpm = parseInt(newReading.heartRate);
       
+      // Salvar no banco de dados primeiro
+      const dbId = await saveHeartRateToDatabase(bpm, newReading.notes || 'Medição manual');
+      
       const newHrReading: HeartRateReading = {
         id: generateUniqueId(),
+        dbId: dbId || undefined,
         date: now,
         value: bpm,
         notes: newReading.notes,
@@ -493,9 +577,6 @@ export default function MonitoringScreen() {
         ...readings,
         heartRate: [newHrReading, ...readings.heartRate],
       });
-      
-      // Salvar no banco de dados
-      await saveHeartRateToDatabase(bpm, newReading.notes || 'Medição manual');
     }
     
     Alert.alert('Sucesso', 'Leitura registrada com sucesso!');
@@ -529,16 +610,25 @@ export default function MonitoringScreen() {
   };
 
   const getBpStatus = (systolic: number, diastolic: number): { label: string; color: string } => {
-    if (systolic < 120 && diastolic < 80) {
-      return { label: 'Normal', color: '#10B981' };
-    } else if ((systolic >= 120 && systolic <= 129) && diastolic < 80) {
-      return { label: 'Elevada', color: '#FBBF24' };
-    } else if ((systolic >= 130 && systolic <= 139) || (diastolic >= 80 && diastolic <= 89)) {
-      return { label: 'Hipertensão Estágio 1', color: '#F97316' };
-    } else if (systolic >= 140 || diastolic >= 90) {
-      return { label: 'Hipertensão Estágio 2', color: '#EF4444' };
-    } else if (systolic > 180 || diastolic > 120) {
+    // Verificar crise hipertensiva primeiro (mais grave)
+    if (systolic >= 180 || diastolic >= 120) {
       return { label: 'Crise Hipertensiva', color: '#7F1D1D' };
+    }
+    // Hipertensão Estágio 2
+    else if (systolic >= 140 || diastolic >= 90) {
+      return { label: 'Hipertensão Estágio 2', color: '#EF4444' };
+    }
+    // Hipertensão Estágio 1
+    else if ((systolic >= 130 && systolic < 140) || (diastolic >= 80 && diastolic < 90)) {
+      return { label: 'Hipertensão Estágio 1', color: '#F97316' };
+    }
+    // Pressão Elevada
+    else if ((systolic >= 120 && systolic < 130) && diastolic < 80) {
+      return { label: 'Elevada', color: '#FBBF24' };
+    }
+    // Normal
+    else if (systolic < 120 && diastolic < 80) {
+      return { label: 'Normal', color: '#10B981' };
     }
     return { label: 'Indefinido', color: '#64748B' };
   };
@@ -578,8 +668,16 @@ export default function MonitoringScreen() {
                       <Text style={styles.dateText}>{formatDate(reading.date)}</Text>
                       <Text style={styles.timeText}>{formatTime(reading.date)}</Text>
                     </View>
-                    <View style={[styles.statusBadge, { backgroundColor: status.color }]}>
-                      <Text style={styles.statusText}>{status.label}</Text>
+                    <View style={styles.headerRight}>
+                      <View style={[styles.statusBadge, { backgroundColor: status.color }]}>
+                        <Text style={styles.statusText}>{status.label}</Text>
+                      </View>
+                      <TouchableOpacity 
+                        style={styles.deleteButton}
+                        onPress={() => handleDeleteReading(reading.id, 'bp')}
+                      >
+                        <Trash2 size={18} color="#EF4444" />
+                      </TouchableOpacity>
                     </View>
                   </View>
                   
@@ -628,8 +726,16 @@ export default function MonitoringScreen() {
                       <Text style={styles.dateText}>{formatDate(reading.date)}</Text>
                       <Text style={styles.timeText}>{formatTime(reading.date)}</Text>
                     </View>
-                    <View style={[styles.statusBadge, { backgroundColor: status.color }]}>
-                      <Text style={styles.statusText}>{status.label}</Text>
+                    <View style={styles.headerRight}>
+                      <View style={[styles.statusBadge, { backgroundColor: status.color }]}>
+                        <Text style={styles.statusText}>{status.label}</Text>
+                      </View>
+                      <TouchableOpacity 
+                        style={styles.deleteButton}
+                        onPress={() => handleDeleteReading(reading.id, 'heartRate')}
+                      >
+                        <Trash2 size={18} color="#EF4444" />
+                      </TouchableOpacity>
                     </View>
                   </View>
                   
@@ -670,6 +776,12 @@ export default function MonitoringScreen() {
                       <Text style={styles.dateText}>{formatDate(reading.date)}</Text>
                       <Text style={styles.timeText}>{formatTime(reading.date)}</Text>
                     </View>
+                    <TouchableOpacity 
+                      style={styles.deleteButton}
+                      onPress={() => handleDeleteReading(reading.id, 'weight')}
+                    >
+                      <Trash2 size={18} color="#EF4444" />
+                    </TouchableOpacity>
                   </View>
                   
                   <View style={styles.weightValueContainer}>
@@ -728,8 +840,16 @@ export default function MonitoringScreen() {
                       <Text style={styles.dateText}>{formatDate(reading.date)}</Text>
                       <Text style={styles.timeText}>{formatTime(reading.date)}</Text>
                     </View>
-                    <View style={[styles.statusBadge, { backgroundColor: getQualityColor(reading.quality) }]}>
-                      <Text style={styles.statusText}>{getQualityLabel(reading.quality)}</Text>
+                    <View style={styles.headerRight}>
+                      <View style={[styles.statusBadge, { backgroundColor: getQualityColor(reading.quality) }]}>
+                        <Text style={styles.statusText}>{getQualityLabel(reading.quality)}</Text>
+                      </View>
+                      <TouchableOpacity 
+                        style={styles.deleteButton}
+                        onPress={() => handleDeleteReading(reading.id, 'sleep')}
+                      >
+                        <Trash2 size={18} color="#EF4444" />
+                      </TouchableOpacity>
                     </View>
                   </View>
                   
@@ -824,10 +944,10 @@ export default function MonitoringScreen() {
         <Text style={styles.headerTitle}>Monitoramento de Saúde</Text>
       </View>
 
-      <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={true}>
+      <ScrollView style={styles.mainScroll} showsVerticalScrollIndicator={true}>
         {/* Smartwatch Connection */}
         <View style={styles.smartwatchSection}>
-          <BluetoothTestButton onHealthDataReceived={handleSmartwatchData} />
+        <BluetoothTestButton onHealthDataReceived={handleSmartwatchData} />
         
         {/* Dados em tempo real */}
         {liveSmartwatchData && (
@@ -979,12 +1099,9 @@ export default function MonitoringScreen() {
                 <Text style={styles.loadingText}>Carregando registros...</Text>
               </View>
             ) : (
-              <ScrollView 
-                style={styles.readingsList}
-                showsVerticalScrollIndicator={true}
-              >
+              <View style={styles.readingsList}>
                 {renderReadingsList()}
-              </ScrollView>
+              </View>
             )}
           </>
         ) : (
@@ -1071,7 +1188,14 @@ export default function MonitoringScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+            <KeyboardAwareScrollView
+              style={styles.modalBody}
+              showsVerticalScrollIndicator={false}
+              enableOnAndroid={true}
+              enableAutomaticScroll={true}
+              extraScrollHeight={20}
+              keyboardShouldPersistTaps="handled"
+            >
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Peso (kg) *</Text>
                 <TextInput
@@ -1096,7 +1220,7 @@ export default function MonitoringScreen() {
                   numberOfLines={3}
                 />
               </View>
-            </ScrollView>
+            </KeyboardAwareScrollView>
 
             <View style={styles.modalFooter}>
               <TouchableOpacity 
@@ -1132,7 +1256,14 @@ export default function MonitoringScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+            <KeyboardAwareScrollView
+              style={styles.modalBody}
+              showsVerticalScrollIndicator={false}
+              enableOnAndroid={true}
+              enableAutomaticScroll={true}
+              extraScrollHeight={20}
+              keyboardShouldPersistTaps="handled"
+            >
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Horas de Sono *</Text>
                 <TextInput
@@ -1187,7 +1318,7 @@ export default function MonitoringScreen() {
                   numberOfLines={3}
                 />
               </View>
-            </ScrollView>
+            </KeyboardAwareScrollView>
 
             <View style={styles.modalFooter}>
               <TouchableOpacity 
@@ -1214,6 +1345,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F1F5F9',
+  },
+  mainScroll: {
+    flex: 1,
   },
   scrollContainer: {
     flex: 1,
@@ -1290,7 +1424,6 @@ const styles = StyleSheet.create({
   readingsList: {
     padding: 16,
     paddingTop: 0,
-    maxHeight: 400,
   },
   loadingContainer: {
     flex: 1,
@@ -1353,6 +1486,11 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     marginLeft: 8,
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   statusBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -1362,6 +1500,11 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
+  },
+  deleteButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#FEE2E2',
   },
   readingValues: {
     flexDirection: 'row',
