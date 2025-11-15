@@ -8,6 +8,7 @@ import { FotolaHealthData } from '../../services/fotolaProtocolParser';
 import { supabase } from '../../config/supabase';
 import healthDataProcessor from '../../services/healthDataProcessor';
 import { HealthMetricType } from '../../types/health';
+import bluetoothService from '../../services/bluetoothService';
 
 interface Reading {
   id: number;
@@ -34,6 +35,10 @@ interface SleepReading extends Reading {
   quality: 'poor' | 'fair' | 'good' | 'excellent';
 }
 
+interface SpO2Reading extends Reading {
+  value: number;
+}
+
 interface NewReading {
   systolic: string;
   diastolic: string;
@@ -41,6 +46,7 @@ interface NewReading {
   weight: string;
   sleepHours: string;
   sleepQuality: 'poor' | 'fair' | 'good' | 'excellent';
+  spo2: string;
   notes: string;
 }
 
@@ -49,9 +55,10 @@ interface Readings {
   heartRate: HeartRateReading[];
   weight: WeightReading[];
   sleep: SleepReading[];
+  spo2: SpO2Reading[];
 }
 
-type TabType = 'bp' | 'heartRate' | 'weight' | 'sleep';
+type TabType = 'bp' | 'heartRate' | 'weight' | 'sleep' | 'spo2';
 
 export default function MonitoringScreen() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -61,6 +68,7 @@ export default function MonitoringScreen() {
     heartRate: [],
     weight: [],
     sleep: [],
+    spo2: [],
   });
   const [showAddForm, setShowAddForm] = useState(false);
   const [showWeightModal, setShowWeightModal] = useState(false);
@@ -72,6 +80,7 @@ export default function MonitoringScreen() {
     weight: '',
     sleepHours: '',
     sleepQuality: 'good',
+    spo2: '',
     notes: '',
   });
   const [loading, setLoading] = useState(true);
@@ -83,6 +92,7 @@ export default function MonitoringScreen() {
   const lastRegisteredValues = useRef<{
     heartRate?: number;
     bloodPressure?: { systolic: number; diastolic: number };
+    spo2?: number;
   }>({});
   
   // Contador para garantir IDs únicos
@@ -93,6 +103,28 @@ export default function MonitoringScreen() {
   };
   
   // Salvar leitura de pressão arterial no Supabase
+  // Salvar leitura de SpO2 no Supabase
+  const saveSpO2ToDatabase = async (spo2: number, notes: string): Promise<string | null> => {
+    if (!userId) return null;
+    
+    try {
+      const { data, error } = await supabase.from('health_readings').insert([{
+        user_id: userId,
+        metric_type: HealthMetricType.OXYGEN_SATURATION,
+        spo2_percentage: spo2,
+        timestamp: new Date().toISOString(),
+        notes: notes
+      }]).select('id').single();
+      
+      if (error) throw error;
+      console.log('✅ SpO2 salvo no banco');
+      return data?.id || null;
+    } catch (error) {
+      console.error('❌ Erro ao salvar SpO2:', error);
+      return null;
+    }
+  };
+
   const saveBPToDatabase = async (systolic: number, diastolic: number, notes: string): Promise<string | null> => {
     if (!userId) return null;
     
@@ -290,6 +322,10 @@ export default function MonitoringScreen() {
                 const reading = readings.sleep.find(r => r.id === id);
                 dbId = reading?.dbId;
                 setReadings(prev => ({ ...prev, sleep: prev.sleep.filter(r => r.id !== id) }));
+              } else if (type === 'spo2') {
+                const reading = readings.spo2.find(r => r.id === id);
+                dbId = reading?.dbId;
+                setReadings(prev => ({ ...prev, spo2: prev.spo2.filter(r => r.id !== id) }));
               }
               
               // Deletar do banco de dados se houver dbId
@@ -388,14 +424,96 @@ export default function MonitoringScreen() {
       }
     }
     
+    // Verificar se SpO2 mudou
+    if (data.spo2) {
+      const lastSpO2 = lastRegisteredValues.current.spo2;
+      const isNewSpO2 = !lastSpO2 || lastSpO2 !== data.spo2;
+      
+      if (isNewSpO2) {
+        // Salvar SpO2 no banco de dados
+        const dbId = await saveSpO2ToDatabase(data.spo2, 'Smartwatch Fotola S20');
+        
+        // Adicionar à lista de leituras
+        const newSpO2Reading: SpO2Reading = {
+          id: generateUniqueId(),
+          dbId: dbId || undefined,
+          date: now,
+          value: data.spo2,
+          notes: 'Smartwatch Fotola S20',
+        };
+        
+        setReadings(prev => ({
+          ...prev,
+          spo2: [newSpO2Reading, ...prev.spo2],
+        }));
+        
+        lastRegisteredValues.current.spo2 = data.spo2;
+        hasNewData = true;
+        console.log('✅ Nova leitura de SpO2 registrada:', data.spo2);
+      }
+    }
+    
     if (!hasNewData) {
       console.log('ℹ️ Dados repetidos, não registrados');
+    }
+  };
+
+  // Callback para BPM dedicado (modo de alta precisão)
+  const handleDedicatedBPM = async (bpm: number, confidence?: number) => {
+    console.log(`💓 BPM DEDICADO recebido: ${bpm} bpm (Confiança: ${confidence || 100}%)`);
+    
+    const lastHR = lastRegisteredValues.current.heartRate;
+    const isNewHR = !lastHR || lastHR !== bpm;
+    
+    if (isNewHR) {
+      const now = new Date();
+      
+      // Salvar no banco de dados
+      const dbId = await saveHeartRateToDatabase(bpm, `BPM Dedicado - Confiança: ${confidence || 100}%`);
+      
+      // Adicionar à lista de leituras
+      const newHrReading: HeartRateReading = {
+        id: generateUniqueId(),
+        dbId: dbId || undefined,
+        date: now,
+        value: bpm,
+        notes: `BPM Dedicado - Confiança: ${confidence || 100}%`,
+      };
+      
+      setReadings(prev => ({
+        ...prev,
+        heartRate: [newHrReading, ...prev.heartRate],
+      }));
+      
+      lastRegisteredValues.current.heartRate = bpm;
+      console.log('✅ BPM dedicado registrado na tela e banco de dados');
+    } else {
+      console.log('ℹ️ BPM dedicado duplicado, não registrado');
     }
   };
 
   // Carregar dados do usuário do Supabase
   useEffect(() => {
     loadUserData();
+  }, []);
+
+  // Inicializar monitoramento de BPM dedicado quando conectar
+  useEffect(() => {
+    const setupDedicatedBPM = async () => {
+      if (bluetoothService.isConnected()) {
+        try {
+          console.log('🔄 Iniciando monitoramento de BPM dedicado...');
+          await bluetoothService.monitorDedicatedBPM(async (data) => {
+            await handleDedicatedBPM(data.bpm, data.confidence);
+          });
+          console.log('✅ Monitoramento BPM dedicado ativo na tela de monitoramento');
+        } catch (error) {
+          console.log('ℹ️ BPM dedicado não disponível, usando modo padrão:', error);
+        }
+      }
+    };
+
+    setupDedicatedBPM();
   }, []);
   
   const loadUserData = async () => {
@@ -517,6 +635,29 @@ export default function MonitoringScreen() {
         });
         console.log(`😴 ${sleepReadings.length} leituras de sono carregadas`);
         setReadings(prev => ({ ...prev, sleep: sleepReadings }));
+      }
+
+      // Buscar leituras de SpO2
+      const { data: spo2Data, error: spo2Error } = await supabase
+        .from('health_readings')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('metric_type', HealthMetricType.OXYGEN_SATURATION)
+        .order('timestamp', { ascending: false })
+        .limit(50);
+      
+      if (spo2Error) {
+        console.error('❌ Erro ao carregar SpO2:', spo2Error);
+      } else {
+        const spo2Readings: SpO2Reading[] = (spo2Data || []).map((record, index) => ({
+          id: new Date(record.timestamp).getTime() + index,
+          dbId: record.id,
+          date: new Date(record.timestamp),
+          value: record.spo2_percentage,
+          notes: record.notes || ''
+        }));
+        console.log(`💙 ${spo2Readings.length} leituras de SpO2 carregadas`);
+        setReadings(prev => ({ ...prev, spo2: spo2Readings }));
       }
       
     } catch (error) {
@@ -869,6 +1010,72 @@ export default function MonitoringScreen() {
         </>
       );
     }
+    
+    // SpO2
+    if (selectedTab === 'spo2') {
+      const sortedReadings = [...readings.spo2].sort((a, b) => b.date.getTime() - a.date.getTime());
+      
+      const getSpO2Color = (value: number) => {
+        if (value >= 95) return '#10B981'; // Normal/Excelente
+        if (value >= 90) return '#FBBF24'; // Aviso
+        if (value >= 85) return '#F97316'; // Baixo
+        return '#EF4444'; // Crítico
+      };
+
+      const getSpO2Status = (value: number) => {
+        if (value >= 95) return 'Normal';
+        if (value >= 90) return 'Atenção';
+        if (value >= 85) return 'Baixo';
+        return 'Crítico';
+      };
+      
+      return (
+        <>
+          {sortedReadings.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>Nenhum registro de SpO2</Text>
+              <Text style={styles.emptySubtext}>
+                As medições do smartwatch aparecerão automaticamente aqui
+              </Text>
+            </View>
+          ) : (
+            sortedReadings.map((reading) => {
+              return (
+                <View key={reading.id} style={styles.readingCard}>
+                  <View style={styles.readingHeader}>
+                    <View style={styles.readingDate}>
+                      <Calendar size={16} color="#64748B" />
+                      <Text style={styles.dateText}>{formatDate(reading.date)}</Text>
+                      <Text style={styles.timeText}>{formatTime(reading.date)}</Text>
+                    </View>
+                    <View style={styles.headerRight}>
+                      <View style={[styles.statusBadge, { backgroundColor: getSpO2Color(reading.value) }]}>
+                        <Text style={styles.statusText}>{getSpO2Status(reading.value)}</Text>
+                      </View>
+                      <TouchableOpacity 
+                        style={styles.deleteButton}
+                        onPress={() => handleDeleteReading(reading.id, 'spo2')}
+                      >
+                        <Trash2 size={18} color="#EF4444" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                  
+                  <View style={styles.hrValueContainer}>
+                    <Text style={styles.hrValue}>{reading.value}</Text>
+                    <Text style={styles.hrUnit}>%</Text>
+                  </View>
+                  
+                  {reading.notes && (
+                    <Text style={styles.readingNotes}>{reading.notes}</Text>
+                  )}
+                </View>
+              );
+            })
+          )}
+        </>
+      );
+    }
   };
 
   const renderAddForm = () => {
@@ -1051,6 +1258,23 @@ export default function MonitoringScreen() {
             Sono
           </Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, selectedTab === 'spo2' && styles.activeTab]}
+          onPress={() => setSelectedTab('spo2')}
+        >
+          <Activity
+            size={20}
+            color={selectedTab === 'spo2' ? '#3B82F6' : '#64748B'}
+          />
+          <Text
+            style={[
+              styles.tabText,
+              selectedTab === 'spo2' && styles.activeTabText
+            ]}
+          >
+            SpO2
+          </Text>
+        </TouchableOpacity>
       </View>
       
       <View style={styles.contentContainer}>
@@ -1065,7 +1289,9 @@ export default function MonitoringScreen() {
                       ? 'Frequência Cardíaca' 
                       : selectedTab === 'weight'
                         ? 'Peso'
-                        : 'Sono'}
+                        : selectedTab === 'sleep'
+                          ? 'Sono'
+                          : 'Oxigenação (SpO2)'}
                 </Text>
                 <Text style={styles.sectionSubtitle}>
                   {selectedTab === 'bp' 
@@ -1074,7 +1300,9 @@ export default function MonitoringScreen() {
                       ? readings.heartRate.length
                       : selectedTab === 'weight'
                         ? readings.weight.length
-                        : readings.sleep.length} registros
+                        : selectedTab === 'sleep'
+                          ? readings.sleep.length
+                          : readings.spo2.length} registros
                 </Text>
               </View>
               {(selectedTab === 'weight' || selectedTab === 'sleep') && (

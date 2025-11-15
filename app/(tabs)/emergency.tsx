@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Platform, TextInput, Linking, Alert, Modal, ActivityIndicator, Image } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, TextInput, Alert, Modal, ActivityIndicator } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { Phone, Plus, CreditCard as Edit2, Trash2, CircleAlert as AlertCircle, X } from 'lucide-react-native';
 import emergencyContactsService, { EmergencyContact } from '@/services/emergencyContacts';
+import { makePhoneCall } from '@/utils/phoneUtils';
 
 type ContactType = 'emergency' | 'medical' | 'personal';
 
@@ -135,41 +136,8 @@ export default function EmergencyScreen() {
     );
   };
   
-  const handleCallEmergency = async (number: string) => {
-    // Remove caracteres não numéricos, mas mantém o + se existir no início
-    const phoneNumber = number.replace(/[^\d+]/g, '');
-    
-    // No web, mostra alerta
-    if (Platform.OS === 'web') {
-      Alert.alert('📱 Ligar', `Número: ${phoneNumber}\n\nFuncionalidade disponível apenas em dispositivos móveis.`);
-      return;
-    }
-    
-    // Tenta abrir diretamente sem verificar primeiro (mais compatível com Expo Go)
-    const url = `tel:${phoneNumber}`;
-    
-    try {
-      await Linking.openURL(url);
-    } catch (error) {
-      console.error('Erro ao fazer ligação:', error);
-      // Se falhar, tenta verificar o suporte
-      try {
-        const canOpen = await Linking.canOpenURL(url);
-        if (!canOpen) {
-          Alert.alert(
-            'Não disponível', 
-            `Não foi possível abrir o discador.\n\nNúmero: ${phoneNumber}\n\nTente discar manualmente.`,
-            [{ text: 'OK' }]
-          );
-        }
-      } catch (err) {
-        Alert.alert(
-          'Erro', 
-          `Erro ao tentar abrir o discador.\n\nNúmero: ${phoneNumber}\n\nDisque manualmente este número.`,
-          [{ text: 'OK' }]
-        );
-      }
-    }
+  const handleCallEmergency = async (number: string, name?: string) => {
+    await makePhoneCall(number, name);
   };
   
   const handleCancel = () => {
@@ -264,6 +232,7 @@ export default function EmergencyScreen() {
           </View>
         ) : (
           personalContacts.filter(c => c.type === 'medical').map(contact => (
+            // @ts-ignore - key is valid in React Native
             <View key={contact.id} style={styles.personalContact}>
               <View style={styles.contactInfo}>
                 <Text style={styles.contactName}>{contact.name}</Text>
@@ -319,6 +288,7 @@ export default function EmergencyScreen() {
           </View>
         ) : (
           personalContacts.filter(c => c.type === 'personal').map(contact => (
+            // @ts-ignore - key is valid in React Native
             <View key={contact.id} style={styles.personalContact}>
               <View style={styles.contactInfo}>
                 <Text style={styles.contactName}>{contact.name}</Text>

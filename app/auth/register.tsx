@@ -25,21 +25,16 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Desativa o botão voltar do Android e oculta barra de navegação
+  // Desativa o botão voltar do Android
   useFocusEffect(
     React.useCallback(() => {
       const onBackPress = () => {
         return true; // Impede a navegação para trás
       };
 
-      // Oculta a barra de navegação
-      NavigationBar.setVisibilityAsync("hidden");
-
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
       return () => {
         subscription.remove();
-        // Restaura a barra de navegação quando sair da tela
-        NavigationBar.setVisibilityAsync("visible");
       };
     }, [])
   );

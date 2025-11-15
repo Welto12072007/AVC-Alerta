@@ -16,15 +16,12 @@ import { useSystemUI } from '@/hooks/useSystemUI';
 export default function WelcomeScreen() {
   useSystemUI(); // Aplica configurações de sistema
 
-  // Desativa o botão voltar do Android e oculta barra de navegação
+  // Desativa o botão voltar do Android
   useFocusEffect(
     React.useCallback(() => {
       const onBackPress = () => {
         return true; // Impede a navegação para trás
       };
-
-      // Força ocultar a barra de navegação
-      NavigationBar.setVisibilityAsync("hidden");
 
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
       return () => {

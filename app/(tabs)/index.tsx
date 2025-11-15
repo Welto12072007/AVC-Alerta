@@ -1,34 +1,14 @@
 import { useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image, Linking, Alert, Platform } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image, Alert } from 'react-native';
 import { Link } from 'expo-router';
 import { TriangleAlert as AlertTriangle, Utensils, Activity, Clock, Info, PhoneCall, LineChart } from 'lucide-react-native';
+import { makePhoneCall } from '@/utils/phoneUtils';
 
 export default function HomeScreen() {
   const [showWelcome, setShowWelcome] = useState(true);
 
   const handleEmergencyCall = async () => {
-    const phoneNumber = '192';
-    
-    // No web, mostra alerta
-    if (Platform.OS === 'web') {
-      Alert.alert('🚨 SAMU - 192', 'Funcionalidade disponível apenas em dispositivos móveis.\n\nEm caso de emergência, disque 192');
-      return;
-    }
-    
-    // Tenta abrir diretamente sem verificar primeiro (mais compatível com Expo Go)
-    const url = `tel:${phoneNumber}`;
-    
-    try {
-      await Linking.openURL(url);
-    } catch (error) {
-      console.error('Erro ao fazer ligação:', error);
-      // Se falhar, mostra mensagem com o número
-      Alert.alert(
-        '🚨 SAMU - 192', 
-        'Não foi possível abrir o discador automaticamente.\n\nPor favor, disque 192 manualmente.',
-        [{ text: 'OK' }]
-      );
-    }
+    await makePhoneCall('192', 'SAMU');
   };
 
   return (

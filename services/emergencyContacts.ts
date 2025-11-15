@@ -1,4 +1,5 @@
 import { supabase } from '@/config/supabase';
+import { requireAuth } from '@/utils/authUtils';
 
 export interface EmergencyContact {
   id?: string;
@@ -32,16 +33,12 @@ const emergencyContactsService: EmergencyContactsService = {
    */
   async getAllContacts() {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        throw new Error('Usuário não autenticado');
-      }
+      const userId = await requireAuth();
 
       const { data, error } = await supabase
         .from('emergency_contacts')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -61,16 +58,12 @@ const emergencyContactsService: EmergencyContactsService = {
    */
   async getContactsByType(type: 'personal' | 'medical') {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        throw new Error('Usuário não autenticado');
-      }
+      const userId = await requireAuth();
 
       const { data, error } = await supabase
         .from('emergency_contacts')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .eq('contact_type', type)
         .order('created_at', { ascending: false });
 
@@ -91,16 +84,12 @@ const emergencyContactsService: EmergencyContactsService = {
    */
   async getFavoriteContacts() {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        throw new Error('Usuário não autenticado');
-      }
+      const userId = await requireAuth();
 
       const { data, error } = await supabase
         .from('emergency_contacts')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .eq('is_favorite', true)
         .order('created_at', { ascending: false });
 
@@ -121,18 +110,14 @@ const emergencyContactsService: EmergencyContactsService = {
    */
   async createContact(contact: Omit<EmergencyContact, 'id' | 'user_id' | 'created_at' | 'updated_at'>) {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        throw new Error('Usuário não autenticado');
-      }
+      const userId = await requireAuth();
 
       const { data, error } = await supabase
         .from('emergency_contacts')
         .insert([
           {
             ...contact,
-            user_id: user.id,
+            user_id: userId,
           }
         ])
         .select()
@@ -155,17 +140,13 @@ const emergencyContactsService: EmergencyContactsService = {
    */
   async updateContact(id: string, contact: Partial<EmergencyContact>) {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        throw new Error('Usuário não autenticado');
-      }
+      const userId = await requireAuth();
 
       const { data, error } = await supabase
         .from('emergency_contacts')
         .update(contact)
         .eq('id', id)
-        .eq('user_id', user.id) // Garante que só atualiza contatos do próprio usuário
+        .eq('user_id', userId) // Garante que só atualiza contatos do próprio usuário
         .select()
         .single();
 
@@ -186,17 +167,13 @@ const emergencyContactsService: EmergencyContactsService = {
    */
   async deleteContact(id: string) {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        throw new Error('Usuário não autenticado');
-      }
+      const userId = await requireAuth();
 
       const { error } = await supabase
         .from('emergency_contacts')
         .delete()
         .eq('id', id)
-        .eq('user_id', user.id); // Garante que só deleta contatos do próprio usuário
+        .eq('user_id', userId); // Garante que só deleta contatos do próprio usuário
 
       if (error) {
         console.error('Erro ao deletar contato:', error);
@@ -215,17 +192,13 @@ const emergencyContactsService: EmergencyContactsService = {
    */
   async toggleFavorite(id: string, isFavorite: boolean) {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        throw new Error('Usuário não autenticado');
-      }
+      const userId = await requireAuth();
 
       const { error } = await supabase
         .from('emergency_contacts')
         .update({ is_favorite: isFavorite })
         .eq('id', id)
-        .eq('user_id', user.id);
+        .eq('user_id', userId);
 
       if (error) {
         console.error('Erro ao alternar favorito:', error);

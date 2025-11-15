@@ -12,7 +12,8 @@
         "./*"
       ]
     },
-    "types": ["expo"]
+    "types": ["expo"],
+    "skipDefaultLibCheck": true
   },
   "include": [
     "**/*.ts",

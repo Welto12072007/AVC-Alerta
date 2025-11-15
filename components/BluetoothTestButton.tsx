@@ -1,4 +1,4 @@
- import React, { useState } from 'react';
+ import React, { useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import bluetoothService from '../services/bluetoothService';
 import { BluetoothDevice } from '../types/health';
@@ -25,6 +25,8 @@ export const BluetoothTestButton = ({ onHealthDataReceived }: BluetoothTestButto
   const [isConnected, setIsConnected] = useState(false);
   const [connectedDevice, setConnectedDevice] = useState<string | null>(null);
   const [latestData, setLatestData] = useState<FotolaHealthData | null>(null);
+  const [isMonitoring, setIsMonitoring] = useState(false);
+  const shouldProcessData = useRef(true); // Controle de processamento usando ref
 
   const handleScan = async () => {
     try {
@@ -107,32 +109,49 @@ export const BluetoothTestButton = ({ onHealthDataReceived }: BluetoothTestButto
         setConnectedDevice(deviceName);
         
         console.log('✅ CONECTADO COM SUCESSO!');
-        Alert.alert(
-          '✅ Conectado!',
-          `Conectado ao ${deviceName}!\n\nAgora vamos tentar ler dados...`
-        );
-
-        // Iniciar monitoramento e parsear dados
+        setIsMonitoring(true);
+        shouldProcessData.current = true;
+        
+        // Iniciar monitoramento automático e parsear dados
         bluetoothService.monitorFotolaData((rawData) => {
+          // Se flag desativada, retornar imediatamente (economia de processamento)
+          if (!shouldProcessData.current) {
+            return;
+          }
+          
           // Parsear protocolo do Fotola
           const parsedData = FotolaProtocolParser.parse(rawData.bytes);
           
+          // APENAS enviar se retornou dados válidos (não null)
+          // Durante medição, parse() retorna null até terminar
           if (parsedData && FotolaProtocolParser.isValid(parsedData)) {
-            console.log('✅ DADOS DE SAÚDE EXTRAÍDOS:', parsedData);
+            console.log('✅ DADOS DE SAÚDE EXTRAÍDOS (enviando para tela):', parsedData);
             setLatestData(parsedData);
             
-            // Enviar para tela de monitoramento (sem Alert - tela já mostra os dados)
+            // Enviar para tela de monitoramento
             if (onHealthDataReceived) {
               onHealthDataReceived(parsedData);
             }
+            
+            // DESATIVAR processamento após registrar (economiza recursos)
+            shouldProcessData.current = false;
+            console.log('⏸️ Medição registrada - processamento pausado (economizando recursos)');
+            
+            // Reativar processamento após 10 segundos automaticamente
+            setTimeout(() => {
+              shouldProcessData.current = true;
+              console.log('✅ Pronto para nova medição');
+            }, 10000);
+          } else if (parsedData === null) {
+            console.log('⏳ Medição em progresso... (não enviando para tela ainda)');
           }
         }).catch(err => {
           console.log('ℹ️ Monitoramento:', err);
         });
-
+        
         Alert.alert(
           '✅ Conectado!',
-          'Smartwatch monitorando.\n\nFaça uma medição no smartwatch e os dados aparecerão automaticamente!'
+          `Conectado ao ${deviceName}!\n\nFaça uma medição no smartwatch e os dados aparecerão automaticamente.`
         );
       } else {
         console.error('❌ Falha na conexão (retornou false)');
@@ -144,9 +163,11 @@ export const BluetoothTestButton = ({ onHealthDataReceived }: BluetoothTestButto
   };
 
   const handleDisconnect = async () => {
+    shouldProcessData.current = false; // Parar processamento
     await bluetoothService.disconnect();
     setIsConnected(false);
     setConnectedDevice(null);
+    setIsMonitoring(false);
     Alert.alert('Desconectado', 'Dispositivo desconectado');
   };
 
@@ -161,10 +182,11 @@ export const BluetoothTestButton = ({ onHealthDataReceived }: BluetoothTestButto
           <View style={styles.connectedBadge}>
             <Text style={styles.connectedIcon}>✅</Text>
             <View>
-              <Text style={styles.connectedLabel}>Conectado</Text>
+              <Text style={styles.connectedLabel}>Conectado e Monitorando</Text>
               <Text style={styles.connectedDevice}>{connectedDevice}</Text>
             </View>
           </View>
+          
           <TouchableOpacity
             style={styles.disconnectButton}
             onPress={handleDisconnect}
